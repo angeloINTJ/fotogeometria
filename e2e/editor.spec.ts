@@ -261,14 +261,15 @@ test('measures how fast the preview follows moving controls (?medir)', async ({ 
   await openGrid(page, './?medir');
   const fps = await measured(page);
   console.log('measured', fps);
-  // SwiftShader keeps up here: 60 on 2026-11-26.
-  expect(fps).toBeGreaterThan(30);
+  // A number from frames drawn; how high depends on the machine: 60 here,
+  // 31 on CI's runner, on 2026-11-26. The next test holds what matters.
+  expect(fps).toBeGreaterThan(0);
   // The parameters come back as they were.
   await page.getByRole('tab', { name: 'Bordas' }).click();
   await expect(page.getByLabel('Panini')).toHaveAttribute('aria-valuetext', '70%');
 });
 
-test('and the measurement follows what a frame costs: 40 ms more, under 30', async ({ page }) => {
+test('and never counts more frames than they cost: 40 ms each, 25 at most', async ({ page }) => {
   await page.addInitScript(() => {
     // Called below with the context as `this`, so it is not left unbound.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -282,7 +283,8 @@ test('and the measurement follows what a frame costs: 40 ms more, under 30', asy
   await openGrid(page, './?medir');
   const fps = await measured(page);
   console.log('measured, 40 ms slower', fps);
-  expect(fps).toBeLessThan(30);
+  // 1000 / 40: on any machine. Measured 24 here and 21 on CI.
+  expect(fps).toBeLessThanOrEqual(25);
 });
 
 test('and does not count a measurement the page was hidden for', async ({ page }) => {
