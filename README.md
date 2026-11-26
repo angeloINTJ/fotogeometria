@@ -24,7 +24,7 @@ Every step is a slider, from automatic to off.
 | | |
 |---|---|
 | **Stage** | 3 of 8 of [the plan](docs/PLANO.md): the editor. Sliders level the photo by hand (tilt and rotation; traced lines come in stage 4, detection in stage 6) and shape its edges, the lens comes from the photo's EXIF or a preset, and there are undo, a grid and the original to compare. Its criterion, 30 frames per second on a mid-range phone, is measured by opening the app with `?medir`; it has not been measured on a phone yet. |
-| **Tests** | 239 tests (`npm test`), run on every pull request: the mathematics against the reference's own output, which it matches to 10⁻⁶ px where the plan asks for 10⁻² px, and the repository's gates. CI also regenerates the reference's output and compares it with the committed one, and runs the browser tests (`npm run e2e`): the shader against the reference on every pixel, and the app opening a photo. |
+| **Tests** | 241 tests (`npm test`), run on every pull request: the mathematics against the reference's own output, which it matches to 10⁻⁶ px where the plan asks for 10⁻² px, and the repository's gates. CI also regenerates the reference's output and compares it with the committed one, and runs the browser tests (`npm run e2e`): the shader against the reference on every pixel, and the app opening a photo. |
 
 ## Privacy
 
