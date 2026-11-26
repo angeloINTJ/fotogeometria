@@ -23,7 +23,7 @@
     "preview": "vite preview",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.core.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "gates": "bash tools/scan-secrets.sh && node tools/check-angulo.mjs && node tools/gen-notices.mjs --check",
