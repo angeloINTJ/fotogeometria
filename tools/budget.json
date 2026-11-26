@@ -20,7 +20,7 @@
     },
     "js": {
       "match": "^assets/.*\\.js$",
-      "bytes": 23856
+      "bytes": 23973
     },
     "classic-scripts": {
       "match": "^[^/]+\\.js$",

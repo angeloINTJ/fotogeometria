@@ -40,6 +40,79 @@ async function shownLines(page: Page): Promise<{ red: number; blue: number }> {
   }, shot.toString('base64'));
 }
 
+/**
+ * A JPEG made in the page: width x height of flat grey, with an EXIF
+ * orientation when one is given. The browser's encoder writes no EXIF, so
+ * an APP1 segment goes in right after the start of the image: a big-endian
+ * TIFF header and one entry, Orientation (0x0112), a SHORT.
+ */
+async function jpeg(page: Page, width: number, height: number, orientation?: number) {
+  const base64 = await page.evaluate(
+    async ([w, h, o]) => {
+      const canvas = new OffscreenCanvas(w, h);
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = 'gray';
+      context.fillRect(0, 0, w, h);
+      let bytes = new Uint8Array(
+        await (await canvas.convertToBlob({ type: 'image/jpeg' })).arrayBuffer(),
+      );
+      if (o) {
+        const app1 = [
+          0xff,
+          0xe1,
+          0x00,
+          0x22,
+          0x45,
+          0x78,
+          0x69,
+          0x66,
+          0x00,
+          0x00,
+          0x4d,
+          0x4d,
+          0x00,
+          0x2a,
+          0x00,
+          0x00,
+          0x00,
+          0x08,
+          0x00,
+          0x01,
+          0x01,
+          0x12,
+          0x00,
+          0x03,
+          0x00,
+          0x00,
+          0x00,
+          0x01,
+          0x00,
+          o,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+        ];
+        const out = new Uint8Array(bytes.length + app1.length);
+        out.set(bytes.subarray(0, 2));
+        out.set(app1, 2);
+        out.set(bytes.subarray(2), 2 + app1.length);
+        bytes = out;
+      }
+      const url = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(new Blob([bytes]));
+      });
+      return url.slice(url.indexOf(',') + 1);
+    },
+    [width, height, orientation ?? 0] as const,
+  );
+  return Buffer.from(base64, 'base64');
+}
+
 test.describe('in Brazilian Portuguese', () => {
   test.use({ locale: 'pt-BR' });
 
@@ -59,9 +132,10 @@ test.describe('in Brazilian Portuguese', () => {
     // What the screen shows: the corrected grid, over the page's background.
     const canvas = page.getByRole('img', { name: 'Prévia da foto corrigida' });
     await expect(canvas).toBeVisible();
+    // The preview draws in the frame after the photo opens.
+    await expect.poll(async () => (await shownLines(page)).red).toBeGreaterThan(0.01);
     const seen = await shownLines(page);
     console.log('preview', JSON.stringify(seen));
-    expect(seen.red).toBeGreaterThan(0.01);
     expect(seen.blue).toBeGreaterThan(0.01);
     expect(problems).toEqual([]);
   });
@@ -78,6 +152,38 @@ test.describe('in Brazilian Portuguese', () => {
     await expect(page.getByRole('button', { name: 'Escolher foto' })).toBeEnabled();
     await page.locator('input[type=file]').setInputFiles(GRID);
     await expect(page.locator('#app')).toHaveAttribute('data-state', 'ready');
+  });
+
+  test('opens a photo upright, by its EXIF orientation', async ({ page }) => {
+    await page.goto('./');
+    // Stored 160 x 120, with the orientation that turns it a quarter
+    // clockwise. Chromium applies a JPEG's orientation in createImageBitmap
+    // whatever imageOrientation says: with 'none' this test still passed
+    // (Chrome Headless Shell 159, 2026-11-26). So it holds the browser to
+    // opening photos upright; load-image.ts asks for 'from-image' anyway,
+    // for any browser that would not apply the orientation unasked.
+    const buffer = await jpeg(page, 160, 120, 6);
+    await page
+      .locator('input[type=file]')
+      .setInputFiles({ name: 'turned.jpg', mimeType: 'image/jpeg', buffer });
+    await expect(page.locator('#app')).toHaveAttribute('data-state', 'ready');
+    await expect(page.getByText('Foto aberta: 120 × 160 px.')).toBeVisible();
+  });
+
+  test('reduces a photo past 4096 x 4096 pixels, and says from what to what', async ({ page }) => {
+    await page.goto('./');
+    // 20 megapixels: past MAX_PIXELS, within SwiftShader's 8192 px textures,
+    // so the area decides, keeping the proportion.
+    const buffer = await jpeg(page, 5000, 4000);
+    await page
+      .locator('input[type=file]')
+      .setInputFiles({ name: 'large.jpg', mimeType: 'image/jpeg', buffer });
+    await expect(page.locator('#app')).toHaveAttribute('data-state', 'ready');
+    await expect(
+      page.getByText(
+        'Foto aberta e reduzida de 5000 × 4000 para 4579 × 3663 px, o máximo que o FotoGeometria abre neste aparelho.',
+      ),
+    ).toBeVisible();
   });
 
   test('says so when the browser has no WebGL2', async ({ page }) => {

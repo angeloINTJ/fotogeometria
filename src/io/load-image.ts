@@ -32,9 +32,13 @@ export interface LoadedImage {
 
 /**
  * The most pixels the app works on: 4096 x 4096, about 16.8 megapixels.
- * iOS Safari refuses a canvas larger than that (PLANO.md §6), and the export
- * encodes from a canvas. A 12-megapixel photo, what most phones save, passes
- * untouched.
+ *
+ * The export encodes from a canvas, and WebKit limits a canvas on iOS by its
+ * area: 4096 x 4096 from 2015 (r185603) until 2024-03-15, when 276145@main
+ * raised it to 8192 x 8192 (maxCanvasArea in Source/WebCore/html/
+ * CanvasBase.cpp, read on 2026-11-26). An iOS whose WebKit predates that
+ * change keeps the old limit, so the app keeps it too (PLANO.md §6). A
+ * 12-megapixel photo, what most phones save, passes untouched.
  */
 export const MAX_PIXELS = 4096 * 4096;
 

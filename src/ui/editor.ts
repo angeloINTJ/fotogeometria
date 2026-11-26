@@ -22,13 +22,11 @@ export class Preview {
   private frame = 0;
 
   /**
-   * @param onDrawn called after each frame that drew the photo
    * @param onError called with what a frame threw; the preview stops drawing
    */
   constructor(
     readonly canvas: HTMLCanvasElement,
     private readonly renderer: Renderer,
-    private readonly onDrawn: () => void,
     private readonly onError: (error: unknown) => void,
   ) {
     new ResizeObserver(() => this.schedule()).observe(canvas);
@@ -52,7 +50,7 @@ export class Preview {
     this.frame = requestAnimationFrame(() => {
       this.frame = 0;
       try {
-        if (this.draw()) this.onDrawn();
+        this.draw();
       } catch (error) {
         this.content = null;
         this.onError(error);
@@ -60,10 +58,13 @@ export class Preview {
     });
   }
 
-  /** Draws the current content; false when there is nothing to draw yet. */
-  private draw(): boolean {
+  /**
+   * Draws the current content, when there is any and the GPU can: a lost
+   * context draws again once the browser gives it back (onRestored).
+   */
+  private draw(): void {
     const { canvas, renderer, content } = this;
-    if (!content || renderer.isLost) return false;
+    if (!content || renderer.isLost) return;
     // The drawing buffer gets one pixel per device pixel of the canvas's box,
     // up to what the GPU renders in one pass, both sides by the same factor:
     // a buffer of another proportion than its box would be shown stretched.
@@ -72,7 +73,7 @@ export class Preview {
     const fit = Math.min(1, renderer.maxRenderSize / Math.max(boxWidth, boxHeight));
     const width = Math.round(boxWidth * fit);
     const height = Math.round(boxHeight * fit);
-    if (width < 1 || height < 1) return false;
+    if (width < 1 || height < 1) return;
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
     this.correction ??= buildProjection(content.params, content.photo.width, content.photo.height);
@@ -83,6 +84,5 @@ export class Preview {
       height,
     );
     renderer.draw(reprojectionUniforms(this.correction, view));
-    return true;
   }
 }

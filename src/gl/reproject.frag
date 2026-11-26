@@ -61,6 +61,8 @@ void main() {
   vec3 ray = vec3(column.x, y * column.z, column.y);
   vec3 r = uRotation * ray;
   // The reference tests the depth of the unit ray: r.z / |ray| > MIN_DEPTH.
+  // Testing the unscaled ray would differ only within 1e-6 rad of the
+  // horizon; this keeps the reference's rule rather than a near miss of it.
   // Mode 2 draws the original photo, fitted in the same view: the before of
   // before/after.
   bool front = uMode == 2 || r.z > MIN_DEPTH * length(ray);

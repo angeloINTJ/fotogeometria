@@ -158,8 +158,11 @@ describe('the column and row halves (what the shader tabulates)', () => {
 
   it('decide the depth on the unit ray, as sourcePoint does', () => {
     // A camera pitched 40° down, with the classic Panini: the framing reaches
-    // past the source's horizon, so some output pixels look behind the
-    // camera, and a test on the ray's unscaled depth would move that edge.
+    // past the source's horizon, so 2308 of its output pixels look behind
+    // the camera, and the halves must place every one of them as sourcePoint
+    // does. (The unscaled ray's depth would differ from the unit ray's only
+    // within 1e-6 rad of the horizon, where no pixel of this scene falls: the
+    // unit ray is the reference's rule, not something this test tells apart.)
     const camera = makeCamera(1000, 750, 375);
     const level = levelingFromVanishingPoint(vanishingPointFromAngles(camera, 40, 10), camera);
     const p: Projection = { camera, rotation: level.rotation, paniniD: 1, compression: 1 };

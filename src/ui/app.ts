@@ -19,7 +19,7 @@ export type AppError = 'decode' | 'webgl' | 'draw';
 /** Everything the screen shows. */
 export interface AppState {
   readonly screen: 'start' | 'preview';
-  /** opening: a photo is being decoded; ready: the preview has drawn it. */
+  /** opening: a photo is being decoded; ready: a photo is open, in the preview. */
   readonly status: 'idle' | 'opening' | 'ready' | 'error';
   readonly error: AppError | null;
   readonly photo: LoadedImage | null;
@@ -88,17 +88,10 @@ export function startApp(root: HTMLElement, t: Messages): void {
   let startupError: AppError | null = null;
   try {
     renderer = new Renderer(canvas);
-    view = new Preview(
-      canvas,
-      renderer,
-      () => {
-        if (state.status === 'opening') update({ status: 'ready' });
-      },
-      (error) => {
-        console.error(error);
-        update({ screen: 'start', status: 'error', error: 'draw' });
-      },
-    );
+    view = new Preview(canvas, renderer, (error) => {
+      console.error(error);
+      update({ screen: 'start', status: 'error', error: 'draw' });
+    });
   } catch (error) {
     // No WebGL2 is the browser's; a shader that does not compile is ours.
     if (error instanceof WebGLUnavailableError) {
@@ -164,9 +157,12 @@ export function startApp(root: HTMLElement, t: Messages): void {
       return;
     }
     const previous = state.photo;
-    // The preview draws in the next frame, and marks the state ready then.
+    // Ready once the photo is decoded and handed to the GPU: the preview
+    // draws it in the next frame. Waiting for that frame would leave both
+    // buttons disabled for good if the context were lost then and never
+    // given back.
     view.show({ photo, params: referenceParams(photo.width, photo.height) });
-    update({ screen: 'preview', photo });
+    update({ screen: 'preview', status: 'ready', photo });
     // The GPU has its own copy now; the old bitmap's memory can go
     // (PLANO.md §6: iOS Safari has little to spare).
     if (previous && previous !== photo) previous.bitmap.close();

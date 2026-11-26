@@ -49,7 +49,7 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     previewLabel: 'Prévia da foto corrigida',
     opened: (w, h) => `Foto aberta: ${size(w, h)} px.`,
     openedReduced: (w, h, ow, oh) =>
-      `Foto aberta e reduzida de ${size(ow, oh)} para ${size(w, h)} px, o máximo deste aparelho.`,
+      `Foto aberta e reduzida de ${size(ow, oh)} para ${size(w, h)} px, o máximo que o FotoGeometria abre neste aparelho.`,
     errorDecode:
       'Não foi possível abrir este arquivo como imagem. Escolha uma foto em JPEG, PNG ou WebP.',
     errorWebGL:
@@ -67,7 +67,7 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     previewLabel: 'Preview of the corrected photo',
     opened: (w, h) => `Photo opened: ${size(w, h)} px.`,
     openedReduced: (w, h, ow, oh) =>
-      `Photo opened and reduced from ${size(ow, oh)} to ${size(w, h)} px, the most this device takes.`,
+      `Photo opened and reduced from ${size(ow, oh)} to ${size(w, h)} px, the most FotoGeometria opens on this device.`,
     errorDecode: 'This file could not be opened as an image. Choose a photo in JPEG, PNG or WebP.',
     errorWebGL:
       'This browser does not offer WebGL2, which FotoGeometria uses to correct the photo. Open the page in an up-to-date browser.',
@@ -84,7 +84,7 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     previewLabel: 'Vista previa de la foto corregida',
     opened: (w, h) => `Foto abierta: ${size(w, h)} px.`,
     openedReduced: (w, h, ow, oh) =>
-      `Foto abierta y reducida de ${size(ow, oh)} a ${size(w, h)} px, lo máximo que admite este dispositivo.`,
+      `Foto abierta y reducida de ${size(ow, oh)} a ${size(w, h)} px, lo máximo que FotoGeometria abre en este dispositivo.`,
     errorDecode: 'No se pudo abrir este archivo como imagen. Elige una foto en JPEG, PNG o WebP.',
     errorWebGL:
       'Este navegador no ofrece WebGL2, que FotoGeometria usa para corregir la foto. Abre la página en un navegador actualizado.',
