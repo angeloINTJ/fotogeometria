@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { makeCamera } from '../../src/core/camera';
 import {
   levelingFromVanishingPoint,
+  vanishingPointFromAngles,
   withFineAdjustment,
   withStrength,
 } from '../../src/core/leveling';
@@ -102,5 +103,38 @@ describe('parity with the reference', () => {
     expect(Math.abs(l.pitchDeg - c.pitchDeg)).toBeLessThan(1e-9);
     expect(Math.abs(l.rollDeg - c.rollDeg)).toBeLessThan(1e-9);
     expect(maxDiff(withStrength(l.rotation, c.strength), c.rotation)).toBeLessThan(1e-12);
+  });
+});
+
+describe('vanishingPointFromAngles', () => {
+  it('is the inverse of levelingFromVanishingPoint', () => {
+    for (const camera of [cam, makeCamera(4000, 3000, 2300), makeCamera(1600, 1200, 600)]) {
+      for (const [pitch, roll] of [
+        [17.5, 0.8],
+        [-20, 5],
+        [10, -3],
+        [0.5, 0],
+        [45, 30],
+      ] as const) {
+        const level = levelingFromVanishingPoint(
+          vanishingPointFromAngles(camera, pitch, roll),
+          camera,
+        );
+        expect(level.pitchDeg).toBeCloseTo(pitch, 10);
+        expect(level.rollDeg).toBeCloseTo(roll, 10);
+      }
+    }
+  });
+
+  it("builds the fixture generator's points", () => {
+    for (const c of fixtures.cases) {
+      const camera = makeCamera(c.width, c.height, c.focal);
+      const vp = vanishingPointFromAngles(camera, c.pitchDeg, c.rollDeg);
+      expect(maxDiff(vp, c.vanishingPoint)).toBeLessThan(1e-12);
+    }
+  });
+
+  it('puts the point at infinity, straight down, when the camera is level', () => {
+    expect(vanishingPointFromAngles(cam, 0, 0)).toEqual([0, 1, 0]);
   });
 });

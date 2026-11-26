@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Vec3 } from '../../src/core/linalg';
 import { normalize } from '../../src/core/linalg';
-import { compress, expand, paniniForward, paniniInverse } from '../../src/core/panini';
+import {
+  compress,
+  expand,
+  paniniColumn,
+  paniniForward,
+  paniniInverse,
+} from '../../src/core/panini';
 import { fixtures, maxDiff } from './fixtures';
 
 /** Rays from -80° to 80° of longitude and -60° to 60° of latitude. */
@@ -82,5 +88,29 @@ describe('vertical compression', () => {
   it('clips the tangent short of infinity, as the reference does', () => {
     expect(Number.isFinite(expand(100, 1))).toBe(true);
     expect(expand(100, 1)).toBeCloseTo(Math.tan(Math.PI / 2 - 1e-3), 6);
+  });
+});
+
+describe('paniniColumn, the half of the inverse that depends on x alone', () => {
+  it('gives the ray of paniniInverse, longer: (sinLon, y · inverseScale, cosLon)', () => {
+    let worst = 0;
+    for (const d of [0, 0.5, 0.7, 1]) {
+      for (const [x, y] of rays().map((r) => paniniForward(r, d))) {
+        const column = paniniColumn(x, d);
+        const ray: Vec3 = [column.sinLon, y * column.inverseScale, column.cosLon];
+        worst = Math.max(worst, maxDiff(normalize(ray), paniniInverse(x, y, d)));
+      }
+    }
+    expect(worst).toBeLessThan(1e-15);
+  });
+
+  it('gives the sine and the cosine of one longitude', () => {
+    for (const d of [0, 0.7, 1]) {
+      for (let x = -3; x <= 3; x += 0.25) {
+        const { sinLon, cosLon } = paniniColumn(x, d);
+        expect(Math.abs(sinLon * sinLon + cosLon * cosLon - 1)).toBeLessThan(1e-15);
+        expect(Math.sign(sinLon)).toBe(Math.sign(x));
+      }
+    }
   });
 });

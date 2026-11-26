@@ -29,6 +29,39 @@ export function paniniForward(r: Vec3, d: number): readonly [number, number] {
 }
 
 /**
+ * What {@link paniniInverse} computes from x alone: the longitude, as its sine
+ * and cosine, and 1 / S.
+ */
+export interface PaniniColumn {
+  readonly sinLon: number;
+  readonly cosLon: number;
+  /** 1 / S, with S = (d + 1) / (d + cos lon). */
+  readonly inverseScale: number;
+}
+
+/**
+ * The half of {@link paniniInverse} that depends on x alone.
+ *
+ * The ray of the plane point (x, y) is cos lat · (sin lon, tan lat, cos lon),
+ * and tan lat = y / S, so up to its length it is
+ * (sinLon, y · inverseScale, cosLon): everything but one product depends on
+ * the column. The shader reads these from a table (src/gl/uniforms.ts)
+ * instead of evaluating trigonometry on the GPU.
+ *
+ * sinLon and cosLon are the sine and cosine of lon = atan2(x / S, cos lon),
+ * as the reference computes them, rather than the root of the quadratic
+ * itself: the two agree to rounding, and this way the bits agree too.
+ */
+export function paniniColumn(x: number, d: number): PaniniColumn {
+  const k = (x * x) / ((d + 1) * (d + 1));
+  const discriminant = k * k * d * d - (k + 1) * (k * d * d - 1);
+  const cosLon = (-k * d + Math.sqrt(discriminant)) / (k + 1);
+  const inverseScale = (cosLon + d) / (d + 1);
+  const lon = Math.atan2(x * inverseScale, cosLon);
+  return { sinLon: Math.sin(lon), cosLon: Math.cos(lon), inverseScale };
+}
+
+/**
  * The unit ray of a point of the Panini plane (`raios_panini`), the inverse
  * of {@link paniniForward}.
  *
@@ -36,13 +69,9 @@ export function paniniForward(r: Vec3, d: number): readonly [number, number] {
  * lon = atan2(x / S, cos lon), lat = atan(y / S).
  */
 export function paniniInverse(x: number, y: number, d: number): Vec3 {
-  const k = (x * x) / ((d + 1) * (d + 1));
-  const discriminant = k * k * d * d - (k + 1) * (k * d * d - 1);
-  const cosLon = (-k * d + Math.sqrt(discriminant)) / (k + 1);
-  const inverseScale = (cosLon + d) / (d + 1);
-  const lon = Math.atan2(x * inverseScale, cosLon);
-  const lat = Math.atan2(y * inverseScale, 1);
-  return [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
+  const column = paniniColumn(x, d);
+  const lat = Math.atan2(y * column.inverseScale, 1);
+  return [Math.cos(lat) * column.sinLon, Math.sin(lat), Math.cos(lat) * column.cosLon];
 }
 
 /**

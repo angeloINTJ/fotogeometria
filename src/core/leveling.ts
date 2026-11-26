@@ -65,6 +65,24 @@ export function levelingFromVanishingPoint(vp: Vec3, cam: Camera): Leveling {
 }
 
 /**
+ * The vertical vanishing point of a camera with this pitch and roll: the
+ * inverse of {@link levelingFromVanishingPoint}. With down = (-sin roll cos
+ * pitch, cos roll cos pitch, sin pitch) and w = down.z / f, the point is
+ * (down.x + cx w, down.y + cy w, w); at a pitch of 0 it lies at infinity.
+ *
+ * Until the point is traced by hand (PLANO.md §8, stage 4) or detected
+ * (stage 6), the preview levels by a pitch and a roll written in the code,
+ * and this turns them into the point of any photo.
+ */
+export function vanishingPointFromAngles(cam: Camera, pitchDeg: number, rollDeg: number): Vec3 {
+  const p = pitchDeg / DEGREES;
+  const r = rollDeg / DEGREES;
+  const down: Vec3 = [-Math.sin(r) * Math.cos(p), Math.cos(r) * Math.cos(p), Math.sin(p)];
+  const w = down[2] / cam.focal;
+  return [down[0] + cam.cx * w, down[1] + cam.cy * w, w];
+}
+
+/**
  * A fraction of a rotation (PLANO.md §3.3, "Força"): the angle of its
  * axis-angle form times the strength, about the same axis.
  *

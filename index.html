@@ -8,15 +8,21 @@
       content="Corrige a geometria de fotos feitas com lente grande angular. As fotos não saem do aparelho."
     />
     <title>FotoGeometria</title>
+    <!-- No icon until the app is installable (PLANO.md §8, stage 7): an empty
+         one keeps the browser from asking the server for /favicon.ico. -->
+    <link rel="icon" href="data:," />
     <script src="%BASE_URL%theme.js"></script>
   </head>
   <body>
-    <main id="app" class="inicio">
-      <h1 class="display">FotoGeometria</h1>
-      <p class="corpo">
-        Corrige a geometria de fotos feitas com lente grande angular. Esta página é a estrutura do
-        projeto; o editor chega nas próximas etapas.
-      </p>
+    <!-- src/ui/app.ts builds the screens here, in the device's language. -->
+    <main id="app">
+      <noscript>
+        <p class="corpo inicio">
+          <span lang="pt-BR">O FotoGeometria precisa de JavaScript para corrigir as fotos.</span>
+          <span lang="en">FotoGeometria needs JavaScript to correct photos.</span>
+          <span lang="es">FotoGeometria necesita JavaScript para corregir las fotos.</span>
+        </p>
+      </noscript>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

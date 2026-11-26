@@ -4,6 +4,12 @@
  * colour, a gradient, a shadow on anything but what floats, a radius outside
  * the three, a distance off the 4 px grid or a type size outside the scale.
  */
+
+[hidden] {
+  display: none !important;
+}
+
+/* The start: the name, what the app does, the one primary action. */
 .inicio {
   max-width: 40rem;
   margin: 0 auto;
@@ -12,4 +18,84 @@
 
 .inicio h1 {
   margin: 0 0 var(--espaco-3);
+}
+
+.inicio p {
+  margin: 0 0 var(--espaco-5);
+}
+
+.inicio .botao {
+  margin: 0 0 var(--espaco-3);
+}
+
+/* Buttons (docs/ANGULO.md §4.1): 15 px, weight 500, a 44 px touch target. */
+.botao {
+  min-height: 44px;
+  padding: var(--espaco-3) var(--espaco-4);
+  border: 1px solid transparent;
+  border-radius: var(--raio-controle);
+  font: 500 15px/20px var(--font-texto);
+  cursor: pointer;
+}
+
+.botao.primario {
+  background: var(--acento);
+  color: var(--acento-tinta);
+}
+
+.botao.primario:hover:not(:disabled) {
+  background: var(--acento-forte);
+}
+
+.botao.secundario {
+  background: var(--superficie);
+  border-color: var(--linha-forte);
+  color: var(--tinta);
+}
+
+.botao.secundario:hover:not(:disabled) {
+  background: var(--superficie-2);
+}
+
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* An error says what happened and what to do, on its own band (§3.1: perigo
+   text goes on perigo-suave). */
+.faixa-erro {
+  margin: 0;
+  padding: var(--espaco-3) var(--espaco-4);
+  border-radius: var(--raio-controle);
+  background: var(--perigo-suave);
+  color: var(--perigo);
+}
+
+/* The preview: the photo takes the screen, the actions sit below it. */
+.previa {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.previa-tela {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.previa-rodape {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espaco-2);
+  padding: var(--espaco-4) var(--espaco-4) max(var(--espaco-4), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--linha);
+}
+
+.previa-rodape h1,
+.previa-rodape p {
+  margin: 0;
 }

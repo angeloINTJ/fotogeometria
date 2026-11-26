@@ -12,7 +12,8 @@ import type { Camera } from './camera';
 import { pixelToRay, rayToPixel } from './camera';
 import type { Mat3 } from './linalg';
 import { mulTransposeVec, mulVec } from './linalg';
-import { compress, expand, paniniForward, paniniInverse } from './panini';
+import type { PaniniColumn } from './panini';
+import { compress, expand, paniniColumn, paniniForward, paniniInverse } from './panini';
 
 /** Everything that maps output pixels to source pixels. */
 export interface Projection {
@@ -132,6 +133,29 @@ export function sourcePoint(
   const x = framing.xMin + (px + 0.5) / f;
   const y = expand(framing.yMin + (py + 0.5) / f, p.compression);
   return rayToPixel(p.camera, mulVec(p.rotation, paniniInverse(x, y, p.paniniD)));
+}
+
+/**
+ * The half of {@link sourcePoint} that depends on the output column alone:
+ * the Panini factors (paniniColumn) of the plane's x at output coordinate qx,
+ * where pixel px has its centre at qx = px + 0.5.
+ */
+export function outputColumn(p: Projection, framing: Framing, qx: number): PaniniColumn {
+  return paniniColumn(framing.xMin + qx / p.camera.focal, p.paniniD);
+}
+
+/**
+ * The half of {@link sourcePoint} that depends on the output row alone: the
+ * plane's y at output coordinate qy, expanded.
+ *
+ * Output pixel (px, py) samples along rotation · (sinLon, y · inverseScale,
+ * cosLon), with the column's factors at px + 0.5 and this y at py + 0.5: the
+ * ray of sourcePoint, up to its length. src/gl/uniforms.ts tabulates both
+ * halves for the shader, and tests/gl/uniforms.test.ts holds the pair to
+ * sourcePoint.
+ */
+export function outputRow(p: Projection, framing: Framing, qy: number): number {
+  return expand(framing.yMin + qy / p.camera.focal, p.compression);
 }
 
 /**

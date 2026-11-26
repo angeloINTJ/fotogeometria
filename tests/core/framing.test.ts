@@ -4,12 +4,20 @@ import type { Projection } from '../../src/core/framing';
 import {
   contour,
   forwardPoint,
+  outputColumn,
   outputFraming,
+  outputRow,
   roundHalfEven,
   sourcePoint,
   validityMask,
 } from '../../src/core/framing';
-import { levelingFromVanishingPoint, withStrength } from '../../src/core/leveling';
+import { mulVec } from '../../src/core/linalg';
+import { MIN_DEPTH } from '../../src/core/camera';
+import {
+  levelingFromVanishingPoint,
+  vanishingPointFromAngles,
+  withStrength,
+} from '../../src/core/leveling';
 import { fixtures } from './fixtures';
 
 function projectionOf(c: (typeof fixtures.cases)[number]): Projection {
@@ -95,5 +103,77 @@ describe('forward and inverse agree', () => {
       expect(back[0]).toBeCloseTo(x, 8);
       expect(back[1]).toBeCloseTo(y, 8);
     }
+  });
+});
+
+describe('the column and row halves (what the shader tabulates)', () => {
+  /**
+   * sourcePoint rebuilt from its halves, as reproject.frag combines them: the
+   * ray (sinLon, y · inverseScale, cosLon), turned, with the depth tested on
+   * the unit ray.
+   */
+  function fromHalves(
+    p: Projection,
+    framing: ReturnType<typeof outputFraming>,
+    px: number,
+    py: number,
+  ) {
+    const column = outputColumn(p, framing, px + 0.5);
+    const y = outputRow(p, framing, py + 0.5);
+    const ray = [column.sinLon, y * column.inverseScale, column.cosLon] as const;
+    const r = mulVec(p.rotation, ray);
+    if (!(r[2] > MIN_DEPTH * Math.hypot(...ray))) return null;
+    const { focal, cx, cy } = p.camera;
+    return [(focal * r[0]) / r[2] + cx, (focal * r[1]) / r[2] + cy] as const;
+  }
+
+  for (const c of fixtures.cases) {
+    it(`give sourcePoint and the reference's samples: ${c.name}`, () => {
+      const p = projectionOf(c);
+      const framing = outputFraming(p);
+      let againstPort = 0;
+      let againstReference = 0;
+      for (const [px, py, u, v] of c.samples) {
+        const halves = fromHalves(p, framing, px, py);
+        const port = sourcePoint(p, framing, px, py);
+        expect(halves === null).toBe(port === null);
+        expect(halves === null).toBe(u === -1 && v === -1);
+        if (!halves || !port) continue;
+        againstPort = Math.max(
+          againstPort,
+          Math.abs(halves[0] - port[0]),
+          Math.abs(halves[1] - port[1]),
+        );
+        againstReference = Math.max(
+          againstReference,
+          Math.abs(halves[0] - u),
+          Math.abs(halves[1] - v),
+        );
+      }
+      // The same ray up to its length: only the last bits differ.
+      expect(againstPort).toBeLessThan(1e-9);
+      expect(againstReference).toBeLessThan(1e-6);
+    });
+  }
+
+  it('decide the depth on the unit ray, as sourcePoint does', () => {
+    // A camera pitched 40° down, with the classic Panini: the framing reaches
+    // past the source's horizon, so some output pixels look behind the
+    // camera, and a test on the ray's unscaled depth would move that edge.
+    const camera = makeCamera(1000, 750, 375);
+    const level = levelingFromVanishingPoint(vanishingPointFromAngles(camera, 40, 10), camera);
+    const p: Projection = { camera, rotation: level.rotation, paniniD: 1, compression: 1 };
+    const framing = outputFraming(p);
+    let behind = 0;
+    let disagree = 0;
+    for (let py = 0; py < framing.height; py++) {
+      for (let px = 0; px < framing.width; px++) {
+        const port = sourcePoint(p, framing, px, py);
+        if (!port) behind++;
+        if ((fromHalves(p, framing, px, py) === null) !== (port === null)) disagree++;
+      }
+    }
+    expect(behind).toBeGreaterThan(1000);
+    expect(disagree).toBe(0);
   });
 });
