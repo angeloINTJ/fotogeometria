@@ -29,3 +29,14 @@ updates:
     groups:
       development:
         dependency-type: development
+    ignore:
+      # Node's types follow the Node the project runs on: .nvmrc says 22, and
+      # the first run (2026-11-26, pull request #1) offered @types/node 26.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # typescript-eslint 8.74.0 supports TypeScript >=4.8.4 <6.1.0, so the
+      # project stays on 6.0 (docs/DECISIONS.md). The first run (2026-11-26)
+      # tried TypeScript 7 and failed on that peer range. Lift this when
+      # typescript-eslint widens it.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
