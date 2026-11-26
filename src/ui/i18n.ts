@@ -6,6 +6,7 @@
  * Microcopy follows docs/ANGULO.md §7: a button names its action and object,
  * an error says what happened and what to do.
  */
+import type { SliderKey, Tool } from './controls';
 
 /** The interface's languages. */
 export type Locale = 'pt-BR' | 'en' | 'es';
@@ -14,11 +15,12 @@ export type Locale = 'pt-BR' | 'en' | 'es';
 export interface Messages {
   readonly lead: string;
   readonly choosePhoto: string;
-  readonly chooseAnother: string;
+  readonly takePhoto: string;
+  readonly changePhoto: string;
   readonly opening: string;
   readonly privacy: string;
-  readonly fixedCorrection: string;
   readonly previewLabel: string;
+  readonly originalLabel: string;
   readonly opened: (width: number, height: number) => string;
   readonly openedReduced: (
     width: number,
@@ -26,6 +28,22 @@ export interface Messages {
     originalWidth: number,
     originalHeight: number,
   ) => string;
+  readonly undo: string;
+  readonly restoreDefaults: string;
+  readonly grid: string;
+  readonly showOriginal: string;
+  readonly showOriginalHint: string;
+  readonly toolsLabel: string;
+  readonly tools: Readonly<Record<Tool, string>>;
+  readonly sliders: Readonly<Record<SliderKey, string>>;
+  readonly levelHint: string;
+  readonly edgesHint: string;
+  readonly lensPresets: string;
+  readonly focalFromPhoto: (mm: string) => string;
+  readonly focalOutOfRange: (mm: string, min: string, max: string) => string;
+  readonly focalUnknown: string;
+  readonly measuring: string;
+  readonly measured: (fps: number) => string;
   readonly errorDecode: string;
   readonly errorWebGL: string;
   readonly errorDraw: string;
@@ -41,15 +59,39 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
   'pt-BR': {
     lead: 'Corrige a geometria de fotos feitas com lente grande angular: as verticais que convergem e as bordas esticadas.',
     choosePhoto: 'Escolher foto',
-    chooseAnother: 'Escolher outra foto',
+    takePhoto: 'Tirar foto',
+    changePhoto: 'Trocar foto',
     opening: 'Abrindo a foto…',
     privacy: 'Suas fotos não saem do aparelho.',
-    fixedCorrection:
-      'Os controles ainda não existem: a prévia aplica a correção fixa do caso de referência (inclinação de 17,5°, rotação de 0,8°, lente de 13 mm).',
     previewLabel: 'Prévia da foto corrigida',
+    originalLabel: 'A foto original',
     opened: (w, h) => `Foto aberta: ${size(w, h)} px.`,
     openedReduced: (w, h, ow, oh) =>
       `Foto aberta e reduzida de ${size(ow, oh)} para ${size(w, h)} px, o máximo que o FotoGeometria abre neste aparelho.`,
+    undo: 'Desfazer',
+    restoreDefaults: 'Restaurar padrões',
+    grid: 'Grade',
+    showOriginal: 'Ver original',
+    showOriginalHint: 'Segure este botão, ou a prévia, para ver a foto sem correção.',
+    toolsLabel: 'Ferramentas',
+    tools: { level: 'Nivelar', edges: 'Bordas', lens: 'Lente' },
+    sliders: {
+      pitchOffsetDeg: 'Inclinação',
+      rollOffsetDeg: 'Rotação',
+      paniniD: 'Panini',
+      verticalCompression: 'Compressão vertical',
+      focal35mm: 'Focal equivalente',
+    },
+    levelHint: 'Ajuste até as verticais da foto ficarem retas. A grade ajuda.',
+    edgesHint:
+      'A Panini desfaz o esticamento das laterais; a compressão vertical, o do topo e da base.',
+    lensPresets: 'Lente do celular',
+    focalFromPhoto: (mm) => `A foto informa ${mm}.`,
+    focalOutOfRange: (mm, min, max) =>
+      `A foto informa ${mm}, fora da faixa do controle, de ${min} a ${max}.`,
+    focalUnknown: 'A foto não informa a focal: escolha a lente com que ela foi feita.',
+    measuring: 'Medindo a prévia…',
+    measured: (fps) => `Prévia a ${fps} quadros por segundo com os controles em movimento.`,
     errorDecode:
       'Não foi possível abrir este arquivo como imagem. Escolha uma foto em JPEG, PNG ou WebP.',
     errorWebGL:
@@ -59,15 +101,39 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
   en: {
     lead: 'Fixes the geometry of photos taken with a wide-angle lens: converging verticals and stretched edges.',
     choosePhoto: 'Choose photo',
-    chooseAnother: 'Choose another photo',
+    takePhoto: 'Take photo',
+    changePhoto: 'Change photo',
     opening: 'Opening the photo…',
     privacy: 'Your photos never leave the device.',
-    fixedCorrection:
-      'There are no controls yet: the preview applies the fixed correction of the reference case (17.5° tilt, 0.8° rotation, 13 mm lens).',
     previewLabel: 'Preview of the corrected photo',
+    originalLabel: 'The original photo',
     opened: (w, h) => `Photo opened: ${size(w, h)} px.`,
     openedReduced: (w, h, ow, oh) =>
       `Photo opened and reduced from ${size(ow, oh)} to ${size(w, h)} px, the most FotoGeometria opens on this device.`,
+    undo: 'Undo',
+    restoreDefaults: 'Restore defaults',
+    grid: 'Grid',
+    showOriginal: 'Show original',
+    showOriginalHint: 'Hold this button, or the preview, to see the photo uncorrected.',
+    toolsLabel: 'Tools',
+    tools: { level: 'Level', edges: 'Edges', lens: 'Lens' },
+    sliders: {
+      pitchOffsetDeg: 'Tilt',
+      rollOffsetDeg: 'Rotation',
+      paniniD: 'Panini',
+      verticalCompression: 'Vertical compression',
+      focal35mm: 'Equivalent focal length',
+    },
+    levelHint: "Adjust until the photo's verticals stand straight. The grid helps.",
+    edgesHint:
+      'Panini undoes the stretch at the sides; vertical compression, at the top and bottom.',
+    lensPresets: 'Phone lens',
+    focalFromPhoto: (mm) => `The photo records ${mm}.`,
+    focalOutOfRange: (mm, min, max) =>
+      `The photo records ${mm}, outside the control's range, ${min} to ${max}.`,
+    focalUnknown: 'The photo does not record its focal length: choose the lens it was taken with.',
+    measuring: 'Measuring the preview…',
+    measured: (fps) => `Preview at ${fps} frames per second with the controls moving.`,
     errorDecode: 'This file could not be opened as an image. Choose a photo in JPEG, PNG or WebP.',
     errorWebGL:
       'This browser does not offer WebGL2, which FotoGeometria uses to correct the photo. Open the page in an up-to-date browser.',
@@ -76,15 +142,41 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
   es: {
     lead: 'Corrige la geometría de fotos tomadas con lente gran angular: las verticales que convergen y los bordes estirados.',
     choosePhoto: 'Elegir foto',
-    chooseAnother: 'Elegir otra foto',
+    takePhoto: 'Tomar foto',
+    changePhoto: 'Cambiar foto',
     opening: 'Abriendo la foto…',
     privacy: 'Tus fotos no salen del dispositivo.',
-    fixedCorrection:
-      'Todavía no hay controles: la vista previa aplica la corrección fija del caso de referencia (inclinación de 17,5°, rotación de 0,8°, lente de 13 mm).',
     previewLabel: 'Vista previa de la foto corregida',
+    originalLabel: 'La foto original',
     opened: (w, h) => `Foto abierta: ${size(w, h)} px.`,
     openedReduced: (w, h, ow, oh) =>
       `Foto abierta y reducida de ${size(ow, oh)} a ${size(w, h)} px, lo máximo que FotoGeometria abre en este dispositivo.`,
+    undo: 'Deshacer',
+    restoreDefaults: 'Restablecer valores',
+    grid: 'Cuadrícula',
+    showOriginal: 'Ver original',
+    showOriginalHint:
+      'Mantén pulsado este botón, o la vista previa, para ver la foto sin corregir.',
+    toolsLabel: 'Herramientas',
+    tools: { level: 'Nivelar', edges: 'Bordes', lens: 'Lente' },
+    sliders: {
+      pitchOffsetDeg: 'Inclinación',
+      rollOffsetDeg: 'Rotación',
+      paniniD: 'Panini',
+      verticalCompression: 'Compresión vertical',
+      focal35mm: 'Focal equivalente',
+    },
+    levelHint: 'Ajusta hasta que las verticales de la foto queden rectas. La cuadrícula ayuda.',
+    edgesHint:
+      'Panini deshace el estiramiento de los laterales; la compresión vertical, el de arriba y abajo.',
+    lensPresets: 'Lente del teléfono',
+    focalFromPhoto: (mm) => `La foto indica ${mm}.`,
+    focalOutOfRange: (mm, min, max) =>
+      `La foto indica ${mm}, fuera del rango del control, de ${min} a ${max}.`,
+    focalUnknown: 'La foto no indica su focal: elige la lente con la que se tomó.',
+    measuring: 'Midiendo la vista previa…',
+    measured: (fps) =>
+      `Vista previa a ${fps} fotogramas por segundo con los controles en movimiento.`,
     errorDecode: 'No se pudo abrir este archivo como imagen. Elige una foto en JPEG, PNG o WebP.',
     errorWebGL:
       'Este navegador no ofrece WebGL2, que FotoGeometria usa para corregir la foto. Abre la página en un navegador actualizado.',
@@ -105,4 +197,31 @@ export function pickLocale(preferred: readonly string[]): Locale {
     if (language === 'es') return 'es';
   }
   return 'pt-BR';
+}
+
+/**
+ * How a slider's value reads, in the interface's language: degrees with one
+ * decimal and their sign, the edges in percent, the focal length in
+ * millimetres ("+2,5°", "70%", "24 mm" in Brazilian Portuguese).
+ */
+export function formatSlider(locale: Locale, key: SliderKey, value: number): string {
+  switch (key) {
+    case 'pitchOffsetDeg':
+    case 'rollOffsetDeg':
+      return `${new Intl.NumberFormat(locale, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+        signDisplay: 'exceptZero',
+      }).format(value)}°`;
+    case 'paniniD':
+    case 'verticalCompression':
+      return new Intl.NumberFormat(locale, { style: 'percent' }).format(value);
+    case 'focal35mm':
+      return formatMillimetres(locale, value);
+  }
+}
+
+/** A length in millimetres, as the interface writes it ("12,5 mm"). */
+export function formatMillimetres(locale: Locale, mm: number): string {
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(mm)} mm`;
 }

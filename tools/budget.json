@@ -12,7 +12,7 @@
     },
     "css": {
       "match": "^assets/.*\\.css$",
-      "bytes": 3479
+      "bytes": 5288
     },
     "fonts": {
       "match": "^assets/.*\\.woff2$",
@@ -20,7 +20,7 @@
     },
     "js": {
       "match": "^assets/.*\\.js$",
-      "bytes": 23973
+      "bytes": 65313
     },
     "classic-scripts": {
       "match": "^[^/]+\\.js$",

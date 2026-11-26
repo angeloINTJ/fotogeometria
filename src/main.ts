@@ -14,4 +14,4 @@ dark.addEventListener('change', (event) => {
 
 const locale = pickLocale(navigator.languages);
 document.documentElement.lang = locale;
-startApp(document.getElementById('app')!, MESSAGES[locale]);
+startApp(document.getElementById('app')!, MESSAGES[locale], locale);
