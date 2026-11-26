@@ -23,8 +23,8 @@ Cada paso es un control deslizante, del automático al apagado.
 
 | | |
 |---|---|
-| **Etapa** | 0 de 8 del [plan](docs/PLANO.md): la estructura del proyecto, sus puertas de calidad y la CI. El editor llega en las etapas 1 a 5. |
-| **Pruebas** | 42 pruebas unitarias (`npm test`) de las puertas del propio repositorio y de la fijación de la referencia, ejecutadas en cada pull request. |
+| **Etapa** | 1 de 8 del [plan](docs/PLANO.md): las matemáticas de la corrección, en `src/core/`, sujetas a la referencia por pruebas de paridad. El editor llega en las etapas 2 a 5. |
+| **Pruebas** | 183 pruebas (`npm test`), ejecutadas en cada pull request: las matemáticas frente a la salida de la propia referencia, con la que coinciden a 10⁻⁶ px donde el plan pide 10⁻² px, y las puertas del repositorio. La CI también vuelve a generar la salida de la referencia y la compara con la versionada. |
 
 ## Privacidad
 

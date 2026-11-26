@@ -23,8 +23,8 @@ Cada etapa é um deslizador, do automático ao desligado.
 
 | | |
 |---|---|
-| **Etapa** | 0 de 8 do [plano](docs/PLANO.md): a estrutura do projeto, seus portões e o CI. O editor chega nas etapas 1 a 5. |
-| **Testes** | 42 testes unitários (`npm test`) dos portões do próprio repositório e da fixação da referência, rodados em todo pull request. |
+| **Etapa** | 1 de 8 do [plano](docs/PLANO.md): a matemática da correção, em `src/core/`, presa à referência por testes de paridade. O editor chega nas etapas 2 a 5. |
+| **Testes** | 183 testes (`npm test`), rodados em todo pull request: a matemática contra a saída da própria referência, com a qual bate a 10⁻⁶ px onde o plano pede 10⁻² px, e os portões do repositório. O CI também gera de novo a saída da referência e a compara com a versionada. |
 
 ## Privacidade
 

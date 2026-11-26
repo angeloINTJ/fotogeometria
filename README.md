@@ -23,8 +23,8 @@ Every step is a slider, from automatic to off.
 
 | | |
 |---|---|
-| **Stage** | 0 of 8 of [the plan](docs/PLANO.md): the project's structure, its gates and CI. The editor arrives in stages 1 to 5. |
-| **Tests** | 42 unit tests (`npm test`) of the repository's own gates and of the reference's pin, run on every pull request. |
+| **Stage** | 1 of 8 of [the plan](docs/PLANO.md): the mathematics of the correction, in `src/core/`, held to the reference by parity tests. The editor arrives in stages 2 to 5. |
+| **Tests** | 183 tests (`npm test`), run on every pull request: the mathematics against the reference's own output, which it matches to 10⁻⁶ px where the plan asks for 10⁻² px, and the repository's gates. CI also regenerates the reference's output and compares it with the committed one. |
 
 ## Privacy
 
