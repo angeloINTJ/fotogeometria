@@ -1,0 +1,6 @@
+# The Python that generates tests/fixtures/ from reference/corrigir_geometria.py.
+# Pinned: the fixtures are the reference's output under exactly these versions
+# (generated with Python 3.14.4 on 2026-11-25; CI regenerates them under 3.12
+# and compares, see scripts/generate_fixtures.py --check).
+numpy==2.3.5
+opencv-python-headless==4.14.0.94

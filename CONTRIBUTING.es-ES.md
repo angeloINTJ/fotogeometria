@@ -12,7 +12,7 @@ Gracias por tu interés. FotoGeometria es una app web que corrige, en el propio 
 
 ## Preparar el entorno
 
-Necesitas Node.js 22.13 o posterior (`.nvmrc` dice 22) y npm.
+Necesitas Node.js 22.13 o posterior (`.nvmrc` dice 22) y npm. Python 3 solo hace falta para volver a generar los fixtures de paridad a partir de la referencia (AGENTS.md §6).
 
 ```bash
 git clone https://github.com/angeloINTJ/fotogeometria.git

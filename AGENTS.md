@@ -40,12 +40,13 @@ Node 22.13 or later. `FG_BASE=/ npm run build` builds for a site served at the r
 CI runs every one of these on each pull request and each push to `main`, and a pull request cannot merge with one red. Run them before you push: CI answers in minutes what your terminal answers in seconds.
 
 - **Lint and format.** ESLint with the type-aware rules of typescript-eslint, then Prettier in check mode. Prettier leaves alone what must stay byte for byte (`.prettierignore` says what and why).
-- **Types.** `tsc` in strict mode.
+- **Types.** `tsc` in strict mode, twice: the whole program, and `src/core/` alone without the DOM's types (`tsconfig.core.json`).
 - **Tests.** Every test in `tests/`, including the gates' own tests and their mutations.
 - **Budget.** `tools/check-budget.mjs` holds each category of `dist/` (HTML, CSS, fonts, JavaScript, classic scripts) to the byte count in `tools/budget.json`. It fails on any difference, smaller included: the budget is a high-water mark that goes down in the same change that shrinks the build. Record a deliberate change with `node tools/check-budget.mjs --write`, and say what moved it in the commit.
 - **Secrets.** `tools/scan-secrets.sh`: a tracked key file, private key material, an access token or a literal credential. The project needs no secret at all, so a hit is a leak or a test value for `tools/.secretscan-allow`, with its reason.
 - **The Ângulo.** `tools/check-angulo.mjs` (§7).
 - **Third-party notices.** `tools/gen-notices.mjs --check`: `THIRD_PARTY_NOTICES.md` is what `tools/third-party.json` renders, every runtime dependency in `package.json` has an entry, and every entry's licence text is in `LICENSES/`.
+- **Fixtures.** `scripts/generate_fixtures.py --check` regenerates the reference's output under Python 3.12 with the NumPy and OpenCV of `scripts/requirements.txt`, and compares it with `tests/fixtures/parity.json`: integers exactly, floats within 10⁻⁹ (§6).
 
 ## 4. Tests first
 
@@ -58,13 +59,26 @@ CI runs every one of these on each pull request and each push to `main`, and a p
 
 From PLANO.md §5:
 
-- `src/core/` imports nothing from `gl/`, `ui/`, `io/` or `detect/`. ESLint refuses such an import (`eslint.config.js`).
+- `src/core/` imports nothing from `gl/`, `ui/`, `io/` or `detect/`. ESLint refuses such an import (`eslint.config.js`), and `tsconfig.core.json` compiles the folder without the DOM's types. `tests/architecture.test.ts` puts each violation back and expects one finding.
 - The editor's state is one immutable object; each change makes a new state and a redraw.
 - The same function of `src/core/` feeds the shader (through uniforms) and the crop (on the CPU), so there are never two versions of the mathematics.
 
 ## 6. The reference and parity
 
-`reference/corrigir_geometria.py` is the algorithm the plan calls validated. The TypeScript in `src/core/` is a port of it, and parity tests compare the two at 0.01 px. A numerical difference from the reference is either a bug or a decision; a decision is justified in the code and covered by a test.
+`reference/corrigir_geometria.py` is the algorithm the plan calls validated. The TypeScript in `src/core/` is a port of it, written in the same order of operations, and the parity tests in `tests/core/` compare the two. The plan asks for 0.01 px; the port holds 10⁻⁶ px on every sampled coordinate, 10⁻¹² on the rotation and the framing, and the exact count of valid pixels. A numerical difference from the reference is either a bug or a decision; a decision is justified in the code, covered by a test, and listed in `docs/DECISIONS.md`.
+
+The fixtures are generated, never edited. To regenerate them after a deliberate change to the generator (the reference itself is pinned):
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r scripts/requirements.txt
+.venv/bin/python scripts/generate_fixtures.py          # writes tests/fixtures/parity.json
+.venv/bin/python scripts/generate_fixtures.py --check  # what CI runs
+```
+
+`--check` compares numbers within 10⁻⁹ rather than text, because the last bit of a sine can differ between two builds of NumPy; the integers (sizes, counts, rectangles) must be equal.
+
+Conventions the port keeps, so a reader of the reference finds the same thing: pixel centres at +0.5 in the output grid, the optical centre at ((W - 1) / 2, (H - 1) / 2), a ray is behind the camera below a depth of 10⁻⁶ (`MIN_DEPTH`), the output size rounds half to even (Python's `round`), and the contour has 200 points per edge with both corners.
 
 The reference reproduces the plan's reference case without its photo: a vanishing point built from a pitch of 17.5° and a roll of 0.8°, with focal 480 px, strength 0.9, Panini 0.7, vertical compression 0.5 and crop proportion 0.7, gives the 711×1016 output of PLANO.md §3.8 (measured with NumPy 2.3.5 and OpenCV 4.14.0 on 2026-11-25).
 
