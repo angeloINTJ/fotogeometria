@@ -7,8 +7,9 @@
 #
 # Every job has a timeout: twice the longest the job has taken, rounded up to
 # 5 minutes. On 2026-11-26 the longest job of the first two runs took 14 s
-# (lint, run 45728527444), so 5 minutes is the floor. The fixtures job had not
-# run yet: its 10 minutes is provisional until it has been measured.
+# (lint, run 45728527444), so 5 minutes is the floor; the fixtures job took
+# 15 s in its first run (45730272255), so it has the floor too. The e2e job
+# has not run yet: its 10 minutes are provisional until measured.
 name: CI
 
 on:
@@ -100,7 +101,7 @@ jobs:
 
   fixtures:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -114,3 +115,29 @@ jobs:
       # 1e-9 (the last bit of a sine may differ between builds of NumPy).
       - name: The fixtures are what the reference generates
         run: python scripts/generate_fixtures.py --check
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Playwright's own Chromium, and the system libraries it needs. WebGL
+      # runs on SwiftShader, the CPU renderer (playwright.config.ts): the
+      # runners have no GPU.
+      - run: npx playwright install --with-deps chromium
+      # The shader against the reference, and the app opening a photo.
+      - run: npm run e2e
+      - name: The report and traces, when a test failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
