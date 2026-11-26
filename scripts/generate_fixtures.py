@@ -5,7 +5,10 @@ PLANO.md §7 holds it to the reference at 0.01 px. This script runs the
 reference's own functions, unchanged, on fixed parameters and writes what they
 return to tests/fixtures/parity.json: the levelling rotation, the output
 framing, the source coordinates of a grid of output pixels, the number of
-valid pixels and the crop rectangles.
+valid pixels and the crop rectangles. It also writes a synthetic photo, a
+facade grid seen by the reference case's camera, and the reference's own
+correction of it (tests/fixtures/grid-960x1280*.png), which the browser tests
+compare with the shader's.
 
 There is no randomness and no photo. Each case builds its vanishing point from
 a known pitch and roll, which is how the plan's reference case (§3.8, a photo
@@ -18,7 +21,8 @@ give its 711x1016 output.
 
 --check compares numbers within a tolerance rather than text, because the
 last bit of a sine can differ between two builds of NumPy on two machines; the
-integers (sizes, counts, rectangles) must be equal.
+integers (sizes, counts, rectangles) must be equal, and so must every pixel
+of the two images.
 """
 
 import argparse
@@ -174,6 +178,63 @@ def panini_pairs():
     return out
 
 
+GRID_PNG = ROOT / "tests" / "fixtures" / "grid-960x1280.png"
+GRID_CORRECTED_PNG = ROOT / "tests" / "fixtures" / "grid-960x1280-corrected.png"
+
+
+def synthetic_grid(width, height, focal, pitch_deg, roll_deg, supersample=4):
+    """A facade grid, photographed by a camera with this pitch and roll.
+
+    The facade is the plane z = 4 in the level camera's frame, with a line
+    every 0.5 units in x and in y, 0.03 units wide: about 60 px apart and 3.6 px
+    wide at f = 480. Each pixel averages supersample x supersample rays, so the
+    lines are anti-aliased by arithmetic alone, the same on every machine (no
+    font, no drawing library).
+
+    The vertical lines are red and the horizontal ones blue, over a background
+    of grey 40: red is 40 + 180 x the vertical lines' coverage, blue the same
+    with the horizontal lines, green 40 everywhere. The browser tests can then
+    find each family in its own channel without the other crossing it, and a
+    swap of channels cannot pass unseen.
+    """
+    cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
+    p, r = math.radians(pitch_deg), math.radians(roll_deg)
+    rx = np.array([[1, 0, 0], [0, math.cos(p), -math.sin(p)], [0, math.sin(p), math.cos(p)]])
+    rz = np.array([[math.cos(r), -math.sin(r), 0], [math.sin(r), math.cos(r), 0], [0, 0, 1]])
+    camera = rz @ rx  # level camera rays to this camera's rays
+    ys, xs = np.mgrid[0:height, 0:width].astype(np.float64)
+    offsets = (np.arange(supersample) + 0.5) / supersample - 0.5
+    verticals = np.zeros((height, width))
+    horizontals = np.zeros((height, width))
+    for dy in offsets:
+        for dx in offsets:
+            rays = np.stack([(xs + dx - cx) / focal, (ys + dy - cy) / focal, np.ones_like(xs)], -1)
+            level = rays @ camera  # camera^T r, row by row
+            t = 4.0 / level[..., 2]
+            gx = level[..., 0] * t / 0.5
+            gy = level[..., 1] * t / 0.5
+            verticals += np.abs(gx - np.round(gx)) < 0.03
+            horizontals += np.abs(gy - np.round(gy)) < 0.03
+    samples = supersample * supersample
+    red = np.round(40 + 180 * verticals / samples)
+    blue = np.round(40 + 180 * horizontals / samples)
+    green = np.full((height, width), 40.0)
+    return np.stack([blue, green, red], -1).astype(np.uint8)  # OpenCV's order: BGR
+
+
+def grid_images():
+    """The synthetic photo of the reference case, and the reference's correction of it."""
+    name, width, height, focal, pitch, roll, strength, d, c, _ = CASES[0]
+    cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
+    grid = synthetic_grid(width, height, focal, pitch, roll)
+    rot, _, _ = ref.rotacao_de_nivelamento(vanishing_point(pitch, roll, focal, cx, cy), focal, cx, cy)
+    if strength < 1.0:
+        vector, _ = cv2.Rodrigues(rot)
+        rot, _ = cv2.Rodrigues(vector * strength)
+    corrected, _ = ref.reprojetar(grid, focal, rot, d=d, compressao_vertical=c, margem=1.0)
+    return grid, corrected
+
+
 def generate():
     """Everything the parity tests read."""
     sha = hashlib.sha256((ROOT / "reference" / "corrigir_geometria.py").read_bytes()).hexdigest()
@@ -217,16 +278,35 @@ def main():
                 print(f"FIXTURES: note, generated with {key} {committed.get(key)}, now {data[key]}")
             committed[key] = data[key]
         found = differences(committed, data)
+        for path, image in zip((GRID_PNG, GRID_CORRECTED_PNG), grid_images()):
+            written = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+            if written is None or written.shape != image.shape:
+                found.append(f"{path.name}: missing, or not {image.shape}")
+                continue
+            # Exactly: both images are integers from deterministic arithmetic,
+            # so a last bit that differs either changes nothing or crosses a
+            # rounding boundary, and then a pixel moves by levels, not by one
+            # (a supersample of the grid is 11 levels; OpenCV's remap rounds
+            # the sampling position to 1/32 px). No tolerance has been
+            # measured: if CI ever disagrees, its numbers set one.
+            changed = np.argwhere(written != image)
+            if len(changed):
+                worst = int(np.abs(written.astype(int) - image.astype(int)).max())
+                at = changed[0].tolist()
+                found.append(f"{path.name}: {len(changed)} values differ, by up to {worst}, first at {at}")
         for line in found[:50]:
             print(f"FIXTURES: {line}")
         if found:
             print(f"FIXTURES: {len(found)} difference(s): run python scripts/generate_fixtures.py")
             sys.exit(1)
-        print(f"FIXTURES: in sync ({len(data['cases'])} cases, within {TOLERANCE})")
+        print(f"FIXTURES: in sync ({len(data['cases'])} cases within {TOLERANCE}, 2 images exactly)")
         return
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1) + "\n")
     print(f"FIXTURES: wrote {OUT.relative_to(ROOT)} ({OUT.stat().st_size} B)")
+    for path, image in zip((GRID_PNG, GRID_CORRECTED_PNG), grid_images()):
+        cv2.imwrite(str(path), image, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        print(f"FIXTURES: wrote {path.relative_to(ROOT)} ({path.stat().st_size} B)")
 
 
 if __name__ == "__main__":

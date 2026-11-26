@@ -2,6 +2,7 @@
 # byte for byte (the reference script, licence texts, the Ângulo copy) or what a
 # generator owns (the notices, the fixtures, the lockfile).
 dist/
+dist-harness/
 dev-dist/
 coverage/
 node_modules/

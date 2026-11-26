@@ -19,5 +19,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "tools", "*.ts", "*.js"]
+  "include": ["src", "tests", "tools", "e2e", "*.ts", "*.js"]
 }

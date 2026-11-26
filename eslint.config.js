@@ -14,6 +14,7 @@ export default defineConfig(
   {
     ignores: [
       'dist/',
+      'dist-harness/',
       'dev-dist/',
       'coverage/',
       'playwright-report/',
