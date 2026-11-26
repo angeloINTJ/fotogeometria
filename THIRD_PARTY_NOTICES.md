@@ -11,6 +11,7 @@ those, run `npm run notices`, and CI checks that they still agree.
 | Component | Copyright holder | Licence | Ships in |
 |---|---|---|---|
 | [Bricolage Grotesque](#bricolage-grotesque) | The Bricolage Grotesque Project Authors | SIL Open Font License 1.1 | the app |
+| [exifr](#exifr) | Mike Kovařík, Mutiny.cz | MIT License | the app |
 
 ## Bricolage Grotesque
 
@@ -20,3 +21,13 @@ The display face of the interface, in titles. The file is simut-rx's subset of t
 - Licence: SIL Open Font License 1.1, text in [LICENSES/bricolage-grotesque-OFL-1.1.txt](LICENSES/bricolage-grotesque-OFL-1.1.txt)
 - Ships in: the app
 - Source: <https://github.com/ateliertriay/bricolage>
+
+## exifr
+
+Reads the 35 mm equivalent focal length from a photo's EXIF (src/io/exif.ts). The app ships its mini build, dist/mini.esm.mjs (JPEG and TIFF, no tag names), loaded on the first photo.
+
+- Copyright holder: Mike Kovařík, Mutiny.cz
+- Licence: MIT License, text in [LICENSES/exifr-MIT.txt](LICENSES/exifr-MIT.txt)
+- Ships in: the app
+- npm package: `exifr`
+- Source: <https://github.com/MikeKovarik/exifr>
