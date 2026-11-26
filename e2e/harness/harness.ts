@@ -11,7 +11,7 @@ import { focal35mm, makeCamera } from '../../src/core/camera';
 import { isInside, sourcePoint } from '../../src/core/framing';
 import { vanishingPointFromAngles } from '../../src/core/leveling';
 import { Renderer, topRowFirst } from '../../src/gl/renderer';
-import { pixelView, reprojectionUniforms } from '../../src/gl/uniforms';
+import { fitView, pixelView, reprojectionUniforms } from '../../src/gl/uniforms';
 import parity from '../../tests/fixtures/parity.json';
 import correctedUrl from '../../tests/fixtures/grid-960x1280-corrected.png';
 import gridUrl from '../../tests/fixtures/grid-960x1280.png';
@@ -26,6 +26,8 @@ interface Case {
   paniniD: number;
   compression: number;
   samples: Array<[number, number, number, number]>;
+  /** The reference's count of valid pixels, at a margin of 1 px. */
+  validCount?: number;
 }
 
 const cases = parity.cases as unknown as Case[];
@@ -112,9 +114,9 @@ async function renderColor(
 }
 
 /** The source coordinates the shader samples for a parity case, read back. */
-async function renderCoordinates(c: Case) {
+async function renderCoordinates(c: Case, margin = 0) {
   const { renderer, correction, view, width, height } = await prepare({}, c);
-  const uniforms = reprojectionUniforms(correction, view, { mode: 'coordinates', margin: 0 });
+  const uniforms = reprojectionUniforms(correction, view, { mode: 'coordinates', margin });
   const read = renderer.readPixels(uniforms, width, height, 'float');
   renderer.dispose();
   return read;
@@ -162,8 +164,8 @@ async function coordinates(index: number) {
 /**
  * A scene where some output pixels look behind the source camera: pitched
  * 40° down, rolled 10°, with the classic Panini and full compression, so the
- * framing reaches past the source's horizon (1381 x 621, 2.5% of it behind,
- * on 2026-11-26). The parity cases have none.
+ * framing reaches past the source's horizon (1381 x 621, of which 2308
+ * pixels, 0.27%, look behind it, on 2026-11-26). The parity cases have none.
  */
 const BEHIND: Case = (() => {
   const camera = makeCamera(1000, 750, 375);
@@ -188,26 +190,31 @@ const BEHIND: Case = (() => {
  * it. Farther out, near the horizon, f · x / z grows without bound, single
  * precision keeps only its relative error (851 px off, at worst, on
  * 2026-11-26), and the pixel is drawn empty either way.
+ *
+ * @param margin how far inside the photo's edge a source position must be
  */
-async function everyPixel(scene: 'reference-case' | 'behind-the-camera') {
+async function everyPixel(scene: 'reference-case' | 'behind-the-camera', margin = 0) {
   const c = scene === 'reference-case' ? reference : BEHIND;
-  const read = await renderCoordinates(c);
+  const read = await renderCoordinates(c, margin);
   const { projection, framing } = buildProjection(paramsOf(c), c.width, c.height);
   let worst = 0;
   let compared = 0;
   let behind = 0;
   let behindDisagree = 0;
+  let inside = 0;
   let insideDisagree = 0;
   for (let py = 0; py < read.height; py++) {
     for (let px = 0; px < read.width; px++) {
       const i = (py * read.width + px) * 4;
-      const [u, v, inside] = [read.data[i], read.data[i + 1], read.data[i + 2]];
-      const gpuBehind = u === -1 && v === -1 && inside === 0;
+      const [u, v, gpuInside] = [read.data[i], read.data[i + 1], read.data[i + 2]];
+      const gpuBehind = u === -1 && v === -1 && gpuInside === 0;
       const cpu = sourcePoint(projection, framing, px, py);
       if (!cpu) behind++;
       if (gpuBehind !== (cpu === null)) behindDisagree++;
       if (!cpu || gpuBehind) continue;
-      if ((inside === 1) !== isInside(projection.camera, cpu[0], cpu[1], 0)) insideDisagree++;
+      if (gpuInside === 1) inside++;
+      if ((gpuInside === 1) !== isInside(projection.camera, cpu[0], cpu[1], margin))
+        insideDisagree++;
       if (!isInside(projection.camera, cpu[0], cpu[1], -2)) continue;
       compared++;
       worst = Math.max(worst, Math.abs(u - cpu[0]), Math.abs(v - cpu[1]));
@@ -215,13 +222,98 @@ async function everyPixel(scene: 'reference-case' | 'behind-the-camera') {
   }
   return {
     scene,
+    margin,
+    referenceValid: c.validCount,
     pixels: read.width * read.height,
     size: [read.width, read.height],
     behind,
     behindDisagree,
+    inside,
     insideDisagree,
     compared,
     worst,
+  };
+}
+
+/**
+ * The before of before/after (mode 'original'): drawn at one target pixel
+ * per photo pixel, each output pixel lands on a texel's centre, so the photo
+ * must come back byte for byte.
+ */
+async function original() {
+  const { renderer, correction } = await prepare({}, reference);
+  const width = reference.width;
+  const height = reference.height;
+  const view = pixelView({ x: 0, y: 0, width, height });
+  const read = renderer.readPixels(
+    reprojectionUniforms(correction, view, { mode: 'original' }),
+    width,
+    height,
+    'rgba8',
+  );
+  renderer.dispose();
+  const photo = await pixelsOf(gridUrl);
+  let differing = 0;
+  for (let k = 0; k < read.data.length; k++) if (read.data[k] !== photo.data[k]) differing++;
+  return { size: [read.width, read.height], photo: [photo.width, photo.height], differing };
+}
+
+/**
+ * The grid drawn small, as a preview draws it: each target pixel covers
+ * scale x scale output pixels, more of the photo where the correction
+ * compresses it, and only the mipmaps keep the lines from aliasing
+ * (PLANO.md §6). Compared, in red and blue, with the reference's correction
+ * averaged over each target pixel's footprint, where the footprint and 3 px
+ * around it are all photo (the reference blends its edges with black).
+ */
+async function downscaled(scale: number) {
+  const { renderer, correction, width, height } = await prepare({}, reference);
+  const targetWidth = Math.round(width / scale);
+  const targetHeight = Math.round(height / scale);
+  const view = fitView({ x: 0, y: 0, width, height }, targetWidth, targetHeight);
+  const small = renderer.readPixels(
+    reprojectionUniforms(correction, view),
+    targetWidth,
+    targetHeight,
+    'rgba8',
+  );
+  renderer.dispose();
+  const drawn = await renderColor();
+  const expected = await pixelsOf(correctedUrl);
+  const sums = [0, 0];
+  let compared = 0;
+  for (let j = 0; j < targetHeight; j++) {
+    for (let i = 0; i < targetWidth; i++) {
+      // Output pixels whose centres fall in target pixel (i, j).
+      const x0 = Math.ceil(view.originX + i * view.scale - 0.5);
+      const x1 = Math.ceil(view.originX + (i + 1) * view.scale - 0.5);
+      const y0 = Math.ceil(view.originY + j * view.scale - 0.5);
+      const y1 = Math.ceil(view.originY + (j + 1) * view.scale - 0.5);
+      if (x0 - 3 < 0 || y0 - 3 < 0 || x1 + 3 > width || y1 + 3 > height) continue;
+      let whole = true;
+      for (let y = y0 - 3; y < y1 + 3 && whole; y++) {
+        for (let x = x0 - 3; x < x1 + 3 && whole; x++) {
+          whole = drawn.data[(y * width + x) * 4 + 3] === 255;
+        }
+      }
+      if (!whole) continue;
+      const k = (j * targetWidth + i) * 4;
+      for (const [n, channel] of [RED, BLUE].entries()) {
+        let total = 0;
+        for (let y = y0; y < y1; y++) {
+          for (let x = x0; x < x1; x++) total += expected.data[(y * width + x) * 4 + channel];
+        }
+        sums[n] += Math.abs(small.data[k + channel] - total / ((x1 - x0) * (y1 - y0)));
+      }
+      compared++;
+    }
+  }
+  return {
+    scale,
+    size: [targetWidth, targetHeight],
+    compared,
+    red: sums[0] / compared,
+    blue: sums[1] / compared,
   };
 }
 
@@ -412,9 +504,19 @@ declare global {
       verticals: typeof verticals;
       canvasMatchesReadBack: typeof canvasMatchesReadBack;
       everyPixel: typeof everyPixel;
+      original: typeof original;
+      downscaled: typeof downscaled;
     };
   }
 }
 
-window.harness = { coordinates, lines, verticals, canvasMatchesReadBack, everyPixel };
+window.harness = {
+  coordinates,
+  lines,
+  verticals,
+  canvasMatchesReadBack,
+  everyPixel,
+  original,
+  downscaled,
+};
 document.title = 'harness ready';

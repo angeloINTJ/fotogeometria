@@ -50,6 +50,36 @@ for (const scene of ['reference-case', 'behind-the-camera'] as const) {
   });
 }
 
+test('keeps the margin it is given: the reference counts the same pixels', async ({ page }) => {
+  const r = await page.evaluate(() => window.harness.everyPixel('reference-case', 1));
+  console.log('every pixel, margin 1', JSON.stringify(r));
+  // At a margin of 1 px the reference counts 1,054,636 valid pixels
+  // (tests/fixtures/parity.json), and so did the shader on 2026-11-26; at
+  // a margin of 0 it draws 1,057,625.
+  expect(r.insideDisagree).toBeLessThanOrEqual(5);
+  expect(Math.abs(r.inside - r.referenceValid!)).toBeLessThanOrEqual(5);
+});
+
+test('draws the photo itself, unchanged, as the before of before/after', async ({ page }) => {
+  const r = await page.evaluate(() => window.harness.original());
+  console.log('original', JSON.stringify(r));
+  expect(r.size).toEqual(r.photo);
+  expect(r.differing).toBe(0);
+});
+
+test('filters through the mipmaps where it draws small (PLANO.md §6)', async ({ page }) => {
+  const r = await page.evaluate(() => window.harness.downscaled(8));
+  console.log('downscaled', JSON.stringify(r));
+  // Measured: 5.1 (red) and 5.4 (blue) levels from the reference averaged
+  // over each target pixel; without the mipmaps, 11.1 and 11.4. The limit
+  // does not tell trilinear filtering from bilinear between levels (5.7,
+  // 6.0), nor the anisotropic filtering from its absence (6.3, 6.4): either
+  // limit would sit within half a level of what the shader measures.
+  expect(r.compared).toBeGreaterThan(10_000);
+  expect(r.red).toBeLessThan(8);
+  expect(r.blue).toBeLessThan(8);
+});
+
 test('draws the lines where the reference draws them', async ({ page }) => {
   const r = await page.evaluate(() => window.harness.lines());
   console.log('lines', JSON.stringify(r));
