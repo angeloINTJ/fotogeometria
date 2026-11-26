@@ -30,7 +30,8 @@ describe('audit', () => {
 
   it('reports a missing licence text, once', () => {
     const first = manifest.components[0];
-    const broken = { components: [{ ...first, text: 'LICENSES/missing.txt' }] };
+    const rest = manifest.components.slice(1);
+    const broken = { components: [{ ...first, text: 'LICENSES/missing.txt' }, ...rest] };
     expect(audit(broken, pkg, exists)).toEqual([
       `entry "${first.name}": LICENSES/missing.txt does not exist`,
     ]);
@@ -38,7 +39,8 @@ describe('audit', () => {
 
   it('reports a field left out, once', () => {
     const first = manifest.components[0];
-    const broken = { components: [{ ...first, holder: '' }] };
+    const rest = manifest.components.slice(1);
+    const broken = { components: [{ ...first, holder: '' }, ...rest] };
     expect(audit(broken, pkg, exists)).toEqual([`entry "${first.name}" has no "holder"`]);
   });
 });

@@ -19,6 +19,17 @@
       "ships": "the app",
       "source": "https://github.com/ateliertriay/bricolage",
       "package": null
+    },
+    {
+      "name": "exifr",
+      "anchor": "exifr",
+      "about": "Reads the 35 mm equivalent focal length from a photo's EXIF (src/io/exif.ts). The app ships its mini build, dist/mini.esm.mjs (JPEG and TIFF, no tag names), loaded on the first photo.",
+      "holder": "Mike Kovařík, Mutiny.cz",
+      "license": "MIT License",
+      "text": "LICENSES/exifr-MIT.txt",
+      "ships": "the app",
+      "source": "https://github.com/MikeKovarik/exifr",
+      "package": "exifr"
     }
   ]
 }

@@ -4,6 +4,22 @@
  * colour, a gradient, a shadow on anything but what floats, a radius outside
  * the three, a distance off the 4 px grid or a type size outside the scale.
  */
+
+[hidden] {
+  display: none !important;
+}
+
+/* For screen readers only: in the page, not on it. */
+.so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The start: the name, what the app does, two ways to open a photo. */
 .inicio {
   max-width: 40rem;
   margin: 0 auto;
@@ -12,4 +28,217 @@
 
 .inicio h1 {
   margin: 0 0 var(--espaco-3);
+}
+
+.inicio p {
+  margin: 0 0 var(--espaco-5);
+}
+
+.inicio-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-3);
+  margin: 0 0 var(--espaco-3);
+}
+
+/* Buttons (docs/ANGULO.md §4.1): 15 px, weight 500, a 44 px touch target. */
+.botao {
+  min-height: 44px;
+  padding: var(--espaco-3) var(--espaco-4);
+  border: 1px solid transparent;
+  border-radius: var(--raio-controle);
+  font: 500 15px/20px var(--font-texto);
+  cursor: pointer;
+}
+
+.botao.primario {
+  background: var(--acento);
+  color: var(--acento-tinta);
+}
+
+.botao.primario:hover:not(:disabled) {
+  background: var(--acento-forte);
+}
+
+.botao.secundario {
+  background: var(--superficie);
+  border-color: var(--linha-forte);
+  color: var(--tinta);
+}
+
+.botao.discreto {
+  background: transparent;
+  color: var(--acento);
+}
+
+.botao.secundario:hover:not(:disabled),
+.botao.discreto:hover:not(:disabled) {
+  background: var(--superficie-2);
+}
+
+/* A toggle that is on: the grid, the original, the lens that is chosen. */
+.botao.discreto[aria-pressed='true'] {
+  background: var(--superficie-2);
+  color: var(--tinta);
+}
+
+.botao.secundario[aria-pressed='true'] {
+  border-color: var(--acento);
+  color: var(--acento);
+}
+
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* An error says what happened and what to do, on its own band (§3.1: perigo
+   text goes on perigo-suave). */
+.faixa-erro {
+  margin: 0;
+  padding: var(--espaco-3) var(--espaco-4);
+  border-radius: var(--raio-controle);
+  background: var(--perigo-suave);
+  color: var(--perigo);
+}
+
+/* The editor: the photo takes what the controls leave of the screen. */
+/* 100vh first, for a browser without dvh, which would drop the second line
+   and leave the editor, and its preview, no height at all. */
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.editor-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espaco-2);
+  padding: max(var(--espaco-2), env(safe-area-inset-top)) var(--espaco-4) var(--espaco-2);
+  border-bottom: 1px solid var(--linha);
+}
+
+.editor-topo-acoes {
+  display: flex;
+  gap: var(--espaco-2);
+}
+
+/* Held, the preview shows the original: no scrolling, selecting or the
+   browser's long-press menu over it. */
+.editor-previa {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.previa-tela {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The grid: a light line over a darker, wider one, seen on any photo. */
+.grade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.grade-fundo {
+  stroke: var(--tinta);
+  stroke-width: 3;
+  opacity: 0.35;
+}
+
+.grade-linha {
+  stroke: var(--superficie);
+  stroke-width: 1;
+}
+
+.editor-painel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-3);
+  padding: var(--espaco-3) var(--espaco-4) max(var(--espaco-3), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--linha);
+  background: var(--superficie);
+}
+
+.editor-painel p {
+  margin: 0;
+}
+
+.ferramenta-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-3);
+}
+
+/* A slider: its name and value on one line, the track below, 44 px tall to
+   the touch. */
+.controle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-1);
+}
+
+.controle-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.controle-faixa {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--acento);
+}
+
+.lentes {
+  display: flex;
+  gap: var(--espaco-2);
+}
+
+/* The tabs: the tool that is shown has the accent (§3.1: aba ativa). */
+.abas {
+  display: flex;
+  border-bottom: 1px solid var(--linha);
+}
+
+.aba {
+  flex: 1;
+  min-height: 44px;
+  padding: var(--espaco-3) var(--espaco-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--tinta-2);
+  font: 500 15px/20px var(--font-texto);
+  cursor: pointer;
+}
+
+.aba:not([aria-selected='true']):hover {
+  color: var(--tinta);
+}
+
+.aba[aria-selected='true'] {
+  border-bottom-color: var(--acento);
+  color: var(--acento);
+}
+
+.editor-acoes {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--espaco-2);
 }

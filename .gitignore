@@ -1,6 +1,8 @@
 # Dependencies and build output
 node_modules/
 dist/
+# The browser tests' build, with their harness page (vite build --mode harness)
+dist-harness/
 dev-dist/
 coverage/
 *.tsbuildinfo

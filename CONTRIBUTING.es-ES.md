@@ -12,7 +12,7 @@ Gracias por tu interés. FotoGeometria es una app web que corrige, en el propio 
 
 ## Preparar el entorno
 
-Necesitas Node.js 22.13 o posterior (`.nvmrc` dice 22) y npm.
+Necesitas Node.js 22.13 o posterior (`.nvmrc` dice 22) y npm. Python 3 solo hace falta para volver a generar los fixtures de paridad a partir de la referencia (AGENTS.md §6).
 
 ```bash
 git clone https://github.com/angeloINTJ/fotogeometria.git
@@ -25,6 +25,7 @@ npm run dev
 |---|---|
 | `npm run dev` | Sirve la app con recarga automática en `http://localhost:5173/fotogeometria/` |
 | `npm test` | Ejecuta las pruebas unitarias (Vitest) |
+| `npm run e2e` | Ejecuta las pruebas en el navegador (Playwright): el shader frente a la referencia, y la app. La primera vez, `npx playwright install chromium`; o `PW_CHANNEL=chrome npm run e2e` para usar un Chrome instalado |
 | `npm run lint` | ESLint y después Prettier en modo de comprobación |
 | `npm run typecheck` | El compilador de TypeScript, en modo estricto, sin generar archivos |
 | `npm run build` | Construye la app en `dist/` |
@@ -46,7 +47,7 @@ Ejecutan las comprobaciones de espacios en blanco, de YAML y de JSON y las puert
 `main` está protegida: todo cambio llega por pull request, y la CI debe pasar en él. La CI ejecuta los mismos comandos de arriba, así que ejecútalos antes del push:
 
 ```bash
-npm run lint && npm run typecheck && npm test && npm run build && npm run budget && npm run gates
+npm run lint && npm run typecheck && npm test && npm run build && npm run budget && npm run gates && npm run e2e
 ```
 
 - **El presupuesto es exacto.** `tools/budget.json` registra los bytes del build por categoría, y cualquier diferencia falla, también hacia abajo: un presupuesto que solo sube deja de medir. Cuando tu cambio mueve un tamaño, regístralo con `node tools/check-budget.mjs --write` y explica el motivo en el commit.
