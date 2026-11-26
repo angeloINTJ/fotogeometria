@@ -25,6 +25,7 @@ npm run dev
 |---|---|
 | `npm run dev` | Serves the app with hot reload at `http://localhost:5173/fotogeometria/` |
 | `npm test` | Runs the unit tests (Vitest) |
+| `npm run e2e` | Runs the browser tests (Playwright): the shader against the reference, and the app. The first time, `npx playwright install chromium`; or `PW_CHANNEL=chrome npm run e2e` to use an installed Chrome |
 | `npm run lint` | ESLint, then Prettier in check mode |
 | `npm run typecheck` | The TypeScript compiler, in strict mode, without emitting |
 | `npm run build` | Builds the app into `dist/` |
@@ -46,7 +47,7 @@ They run the whitespace and YAML/JSON checks and the fast gates, so you meet a p
 `main` is protected: every change arrives through a pull request, and CI must pass on it. CI runs the same commands as above, so run them before you push:
 
 ```bash
-npm run lint && npm run typecheck && npm test && npm run build && npm run budget && npm run gates
+npm run lint && npm run typecheck && npm test && npm run build && npm run budget && npm run gates && npm run e2e
 ```
 
 - **The budget is exact.** `tools/budget.json` records the bytes of the build per category, and any difference fails, smaller included: a budget that only goes up stops measuring anything. When your change moves a size, record it with `node tools/check-budget.mjs --write` and say why in the commit.

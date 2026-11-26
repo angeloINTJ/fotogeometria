@@ -23,8 +23,8 @@ Cada etapa é um deslizador, do automático ao desligado.
 
 | | |
 |---|---|
-| **Etapa** | 1 de 8 do [plano](docs/PLANO.md): a matemática da correção, em `src/core/`, presa à referência por testes de paridade. O editor chega nas etapas 2 a 5. |
-| **Testes** | 183 testes (`npm test`), rodados em todo pull request: a matemática contra a saída da própria referência, com a qual bate a 10⁻⁶ px onde o plano pede 10⁻² px, e os portões do repositório. O CI também gera de novo a saída da referência e a compara com a versionada. |
+| **Etapa** | 2 de 8 do [plano](docs/PLANO.md): a correção roda na GPU, e a página abre uma foto e a mostra corrigida com os parâmetros fixos do caso de referência. Os controles chegam na etapa 3. |
+| **Testes** | 216 testes (`npm test`), rodados em todo pull request: a matemática contra a saída da própria referência, com a qual bate a 10⁻⁶ px onde o plano pede 10⁻² px, e os portões do repositório. O CI também gera de novo a saída da referência e a compara com a versionada, e roda os testes no navegador (`npm run e2e`): o shader contra a referência em todo pixel, e o app abrindo uma foto. |
 
 ## Privacidade
 
@@ -41,11 +41,11 @@ npm ci
 npm run dev        # http://localhost:5173/fotogeometria/
 ```
 
-`npm test` roda os testes unitários, `npm run lint` e `npm run typecheck` as verificações estáticas, e `npm run gates` os portões do repositório. O [CONTRIBUTING.pt-BR.md](CONTRIBUTING.pt-BR.md) tem o resto.
+`npm test` roda os testes unitários, `npm run e2e` os testes no navegador (uma vez antes: `npx playwright install chromium`), `npm run lint` e `npm run typecheck` as verificações estáticas, e `npm run gates` os portões do repositório. O [CONTRIBUTING.pt-BR.md](CONTRIBUTING.pt-BR.md) tem o resto.
 
 ## Como funciona
 
-O algoritmo é o porte de um script Python validado, guardado em [reference/](reference/corrigir_geometria.py), e o TypeScript fica preso a ele por testes de paridade de 0,01 px. O §3 do [plano](docs/PLANO.md) tem todas as fórmulas: o modelo de câmera, o ponto de fuga, a rotação de nivelamento, a projeção Panini, a compressão vertical, a reprojeção que a GPU faz por pixel e o corte automático.
+O algoritmo é o porte de um script Python validado, guardado em [reference/](reference/corrigir_geometria.py), e o TypeScript fica preso a ele por testes de paridade de 0,01 px. O §3 do [plano](docs/PLANO.md) tem todas as fórmulas: o modelo de câmera, o ponto de fuga, a rotação de nivelamento, a projeção Panini, a compressão vertical, a reprojeção que a GPU faz por pixel (a partir de tabelas da trigonometria, que a CPU calcula por linha e por coluna) e o corte automático.
 
 ## Documentação
 
