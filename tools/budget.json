@@ -1,0 +1,30 @@
+{
+  "_": [
+    "Bytes of the built app (dist/), per category, as a high-water mark that",
+    "moves both ways: tools/check-budget.mjs fails on any difference, and",
+    "--write records the new sizes. Categories match in this order; the first",
+    "pattern that matches a file (relative to dist/) takes it."
+  ],
+  "categories": {
+    "html": {
+      "match": "\\.html$",
+      "bytes": 907
+    },
+    "css": {
+      "match": "^assets/.*\\.css$",
+      "bytes": 2322
+    },
+    "fonts": {
+      "match": "^assets/.*\\.woff2$",
+      "bytes": 13312
+    },
+    "js": {
+      "match": "^assets/.*\\.js$",
+      "bytes": 184
+    },
+    "classic-scripts": {
+      "match": "^[^/]+\\.js$",
+      "bytes": 452
+    }
+  }
+}

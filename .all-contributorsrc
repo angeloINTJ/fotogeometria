@@ -1,0 +1,19 @@
+{
+  "projectName": "fotogeometria",
+  "projectOwner": "angeloINTJ",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": ["README.md", "README.pt-BR.md", "README.es-ES.md"],
+  "imageSize": 100,
+  "contributors": [
+    {
+      "login": "angeloINTJ",
+      "name": "Ângelo Moisés Alves",
+      "avatar_url": "https://avatars.githubusercontent.com/u/117550822",
+      "profile": "https://github.com/angeloINTJ",
+      "contributions": ["code", "doc", "design", "maintenance"]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "linkToUsage": true
+}

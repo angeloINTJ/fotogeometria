@@ -1,0 +1,66 @@
+# Pre-commit hooks. Install once:
+#
+#     pip install pre-commit && pre-commit install
+#
+# The generic hooks, with exclusions that are on purpose:
+#
+#   reference/, LICENSES/, docs/ANGULO.md and docs/PLANO.md are copies kept
+#   byte for byte (the validated script, the upstream licence texts, simut-rx's
+#   guide, the plan as handed over). A whitespace hook would "fix" them in the
+#   first commit that touched them, and each has a pinned sha256 that would
+#   then fail.
+#
+#   tsconfig*.json is read by TypeScript as JSON with comments: check-json
+#   would refuse the first comment written into one.
+#
+# Then the repository's own gates, the fast ones. They run in CI as well;
+# here a contributor meets them in the second a commit takes. The tests and the
+# build are not hooked: a hook that takes minutes is a hook people disable.
+
+exclude: |
+  (?x)^(
+    reference/.*|
+    LICENSES/.*|
+    docs/ANGULO\.md|
+    docs/PLANO\.md|
+    package-lock\.json
+  )$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: ^tsconfig.*\.json$
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+
+  - repo: local
+    hooks:
+      - id: fg-secrets
+        name: no tracked secrets
+        entry: bash tools/scan-secrets.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: fg-angulo
+        name: the Ângulo interface standard
+        entry: node tools/check-angulo.mjs
+        language: system
+        pass_filenames: false
+        files: \.(css|md|html|ts)$|^src/|^docs/
+
+      - id: fg-notices
+        name: third-party notices in sync
+        entry: node tools/gen-notices.mjs --check
+        language: system
+        pass_filenames: false
+        files: ^(tools/third-party\.json|THIRD_PARTY_NOTICES\.md|package\.json|LICENSES/.*)$

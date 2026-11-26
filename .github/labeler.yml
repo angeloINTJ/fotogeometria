@@ -1,0 +1,72 @@
+# Path to label rules for actions/labeler@v7, applied by
+# .github/workflows/pr-labeler.yml when a pull request opens or changes.
+#
+# Every label named here must already exist in the repository (`gh label
+# list`): the action applies labels, it does not create them. A pull request
+# can and should collect several: a fix to the crop with its tests is `core`
+# and `tests`.
+#
+# Each rule needs the changed-files / any-glob-to-any-file nesting: a bare
+# list of globs is the v4 format, and v5 and later ignore it.
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '**/*.md'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'tests/**'
+          - 'e2e/**'
+          - 'scripts/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+
+tools:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'tools/**'
+          - '.pre-commit-config.yaml'
+
+core:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/core/**'
+          - 'reference/**'
+
+gpu:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/gl/**'
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/ui/**'
+          - 'src/styles/**'
+          - 'index.html'
+          - 'public/**'
+
+i18n:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/ui/i18n*'
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'SECURITY.md'
+          - 'tools/scan-secrets.sh'
+          - 'tools/.secretscan-allow'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'package-lock.json'
+          - 'scripts/requirements.txt'

@@ -1,0 +1,24 @@
+{
+  "_": [
+    "What the built app carries that someone else wrote, and under which licence.",
+    "",
+    "tools/gen-notices.mjs writes THIRD_PARTY_NOTICES.md from this file; never",
+    "edit the notices by hand. The check (--check, run by CI) also fails when a",
+    "runtime dependency in package.json has no entry here, or when an entry's",
+    "licence text is missing from LICENSES/. Each text there is the upstream's,",
+    "verbatim."
+  ],
+  "components": [
+    {
+      "name": "Bricolage Grotesque",
+      "anchor": "bricolage-grotesque",
+      "about": "The display face of the interface, in titles. The file is simut-rx's subset of the SemiBold (600) to the Latin letters and punctuation the interface uses, renamed \"Ângulo Display\" because it is no longer the complete font (src/styles/fonts/angulo-display-600.woff2).",
+      "holder": "The Bricolage Grotesque Project Authors",
+      "license": "SIL Open Font License 1.1",
+      "text": "LICENSES/bricolage-grotesque-OFL-1.1.txt",
+      "ships": "the app",
+      "source": "https://github.com/ateliertriay/bricolage",
+      "package": null
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+# Labels pull requests from the paths they touch; .github/labeler.yml holds
+# the rules.
+#
+# pull_request_target, not pull_request, so the job carries the write
+# permission that adding a label needs even when the pull request comes from a
+# fork. That token is safe here because nothing of the pull request is checked
+# out or run: with pull_request_target, both this workflow and the rules file
+# are read from the DEFAULT branch, and the only step is the labeler action.
+# Keep it that way: a checkout of the pull request's head in this workflow
+# would hand untrusted code a write token.
+#
+# sync-labels keeps the labels a statement about the current diff: a push that
+# stops touching docs/ also drops `documentation`. Labels outside the rules
+# (bug, enhancement) are never touched.
+name: PR labeler
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/labeler@v7
+        with:
+          sync-labels: true

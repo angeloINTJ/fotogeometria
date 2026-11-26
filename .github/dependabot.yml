@@ -1,0 +1,31 @@
+# Dependabot: the GitHub Actions and the npm packages, monthly.
+#
+# Every npm dependency is pinned to an exact version (package.json) and its
+# tree by package-lock.json, so nothing moves unless a pull request moves it.
+# A bump will usually also move the build's size, and tools/check-budget.mjs
+# fails until the new sizes are recorded: that is intended, the pull request
+# then says what the bump cost.
+#
+# The development packages are grouped into one pull request a month; a
+# runtime dependency (what ships to the browser) gets its own, because it
+# changes what users download and may change the third-party notices.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'ci'
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    versioning-strategy: increase
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
+    groups:
+      development:
+        dependency-type: development

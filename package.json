@@ -1,0 +1,47 @@
+{
+  "name": "fotogeometria",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixes the geometry of wide-angle photos in the browser: converging verticals and stretched edges. Your photos never leave the device.",
+  "license": "MIT",
+  "author": "Ângelo Moisés Alves",
+  "homepage": "https://angelointj.github.io/fotogeometria/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angeloINTJ/fotogeometria.git"
+  },
+  "bugs": {
+    "url": "https://github.com/angeloINTJ/fotogeometria/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gates": "bash tools/scan-secrets.sh && node tools/check-angulo.mjs && node tools/gen-notices.mjs --check",
+    "notices": "node tools/gen-notices.mjs",
+    "budget": "node tools/check-budget.mjs",
+    "readme-numbers": "vitest run --reporter=dot --reporter=json --outputFile.json=test-results/vitest.json && node tools/check-readme-numbers.mjs test-results/vitest.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.7",
+    "eslint": "10.15.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.14.0",
+    "jsdom": "31.0.1",
+    "prettier": "3.10.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.74.0",
+    "vite": "8.3.8",
+    "vitest": "5.1.2"
+  }
+}

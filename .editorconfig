@@ -1,0 +1,25 @@
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.py]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+
+# Copied verbatim from upstream, so the editor leaves them as they are. The
+# reference script is the validated algorithm (its sha256 is pinned in
+# tests/reference.test.ts) and a licence text is the upstream's text, which
+# THIRD_PARTY_NOTICES.md points to. insert_final_newline is unset, not false:
+# false means "make sure the file does NOT end with a newline" (EditorConfig
+# 0.17.2), and unset leaves the editor's own default.
+[{reference/**,LICENSES/**,docs/ANGULO.md,docs/PLANO.md}]
+trim_trailing_whitespace = false
+insert_final_newline = unset

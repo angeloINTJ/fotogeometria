@@ -1,0 +1,97 @@
+# CI: one job per gate, so a red check names what failed.
+#
+# Runs on every pull request to main, on every push to main (the merge, run
+# again against what was actually merged) and on demand. The job names are the
+# required checks of main's branch protection: renaming a job means updating
+# the protection in the same change, or no pull request can merge.
+#
+# Every job has a timeout. 10 minutes is provisional: no run had been measured
+# when it was set (2026-11-25), and it is revisited with the measured times.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the run it makes obsolete; a run on
+# main is never cancelled, because each one checks a different merge.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The JSON report feeds the next step: the READMEs quote the test count.
+      - run: npx vitest run --reporter=default --reporter=json --outputFile.json=test-results/vitest.json
+      - name: The READMEs quote the test count Vitest ran
+        run: node tools/check-readme-numbers.mjs test-results/vitest.json
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build sizes equal their records (tools/budget.json)
+        run: node tools/check-budget.mjs
+
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      # Before anything is installed: a tracked secret is not something to
+      # find at the end of a build.
+      - name: No tracked secrets
+        run: bash tools/scan-secrets.sh
+      - name: The Ângulo interface standard
+        run: node tools/check-angulo.mjs
+      - name: The third-party notices are in sync
+        run: node tools/gen-notices.mjs --check

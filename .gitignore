@@ -1,0 +1,41 @@
+# Dependencies and build output
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+
+# Test output
+playwright-report/
+test-results/
+blob-report/
+
+# Python (the fixture generator and the reference script)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editors and systems
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local environment and secrets: nothing here should ever be committed.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Agent scratch space
+scratchpad/
+.claude/settings.local.json
+
+# Photos used for local checks. The repository is public: only synthetic or
+# freely licensed images are versioned, and never people who can be identified
+# without their consent (PLANO.md §7).
+/local-photos/

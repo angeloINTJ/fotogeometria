@@ -1,0 +1,15 @@
+/*
+ * The app's own styles. Every value comes from a token of src/styles/angulo.css
+ * (a pinned copy of simut-rx's): tools/check-angulo.mjs fails on a literal
+ * colour, a gradient, a shadow on anything but what floats, a radius outside
+ * the three, a distance off the 4 px grid or a type size outside the scale.
+ */
+.inicio {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--espaco-7) var(--espaco-4);
+}
+
+.inicio h1 {
+  margin: 0 0 var(--espaco-3);
+}
