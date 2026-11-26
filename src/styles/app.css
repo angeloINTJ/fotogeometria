@@ -103,9 +103,12 @@
 }
 
 /* The editor: the photo takes what the controls leave of the screen. */
+/* 100vh first, for a browser without dvh, which would drop the second line
+   and leave the editor, and its preview, no height at all. */
 .editor {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   height: 100dvh;
 }
 

@@ -146,6 +146,27 @@ test('shows the original while the preview is held, and the correction after', a
   await expect(button).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.up('Space');
   await showsAgain(page, corrected);
+  await page.keyboard.down('Enter');
+  await showsAgain(page, original);
+  await page.keyboard.up('Enter');
+  await showsAgain(page, corrected);
+});
+
+test('takes a slider dragged as one change', async ({ page }) => {
+  await openGrid(page);
+  const slider = page.getByLabel('Inclinação');
+  const box = (await slider.boundingBox())!;
+  const y = box.y + box.height / 2;
+  // The thumb starts in the middle, at 0°; twenty moves drag it right.
+  await page.mouse.move(box.x + box.width / 2, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 20; i++) await page.mouse.move(box.x + box.width / 2 + i * 4, y);
+  await page.mouse.up();
+  await expect(slider).not.toHaveAttribute('aria-valuetext', '0,0°');
+  const undoButton = page.getByRole('button', { name: 'Desfazer' });
+  await undoButton.click();
+  await expect(slider).toHaveAttribute('aria-valuetext', '0,0°');
+  await expect(undoButton).toBeDisabled();
 });
 
 test('lays the grid over the preview, and keeps it on for the next visit', async ({ page }) => {
@@ -173,6 +194,17 @@ test('keeps the edges as they were left for the next photo', async ({ page }) =>
   await expect(page.getByLabel('Inclinação')).toHaveAttribute('aria-valuetext', '0,0°');
 });
 
+test('says it could not read the focal length of a PNG', async ({ page }) => {
+  await openGrid(page);
+  await page.getByRole('tab', { name: 'Lente' }).click();
+  await expect(
+    page.getByText(
+      'Não foi possível ler a focal desta foto: escolha a lente com que ela foi feita.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel('Focal equivalente')).toHaveAttribute('aria-valuetext', '13 mm');
+});
+
 test('opens a photo at the focal length its EXIF records, or says it records none', async ({
   page,
 }) => {
@@ -195,7 +227,16 @@ test('opens a photo at the focal length its EXIF records, or says it records non
   ).toBeVisible();
 });
 
-test('takes a photo with the camera', async ({ page }) => {
+test('takes a photo with the camera, and its button says it is opening', async ({ page }) => {
+  // Decoding waits for the test, so the opening state can be seen.
+  await page.addInitScript(() => {
+    const decode = window.createImageBitmap.bind(window);
+    const held = window as unknown as { release?: () => void };
+    window.createImageBitmap = (async (...args: Parameters<typeof createImageBitmap>) => {
+      await new Promise<void>((resolve) => (held.release = resolve));
+      return decode(...args);
+    }) as typeof createImageBitmap;
+  });
   await page.goto('./');
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Tirar foto' }).click();
@@ -203,13 +244,72 @@ test('takes a photo with the camera', async ({ page }) => {
   // capture asks a phone for its camera; a computer opens its files.
   expect(await camera.element().getAttribute('capture')).toBe('environment');
   await camera.setFiles(GRID);
+  await expect(page.getByRole('button', { name: 'Abrindo a foto…' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Escolher foto' })).toBeDisabled();
+  await page.evaluate(() => (window as unknown as { release: () => void }).release());
   await expect(page.locator('#app')).toHaveAttribute('data-state', 'ready');
 });
 
+/** The frames per second ?medir reports, once it reports. */
+async function measured(page: Page): Promise<number> {
+  const line = page.getByText(/^Prévia a \d+ quadros por segundo/);
+  await expect(line).toBeVisible({ timeout: 15_000 });
+  return Number(/(\d+) quadros/.exec((await line.textContent())!)![1]);
+}
+
 test('measures how fast the preview follows moving controls (?medir)', async ({ page }) => {
   await openGrid(page, './?medir');
-  await expect(page.getByText(/^Prévia a \d+ quadros por segundo/)).toBeVisible({
-    timeout: 15_000,
+  const fps = await measured(page);
+  console.log('measured', fps);
+  // SwiftShader keeps up here: 60 on 2026-11-26.
+  expect(fps).toBeGreaterThan(30);
+  // The parameters come back as they were.
+  await page.getByRole('tab', { name: 'Bordas' }).click();
+  await expect(page.getByLabel('Panini')).toHaveAttribute('aria-valuetext', '70%');
+});
+
+test('and the measurement follows what a frame costs: 40 ms more, under 30', async ({ page }) => {
+  await page.addInitScript(() => {
+    // Called below with the context as `this`, so it is not left unbound.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const drawArrays = WebGL2RenderingContext.prototype.drawArrays;
+    WebGL2RenderingContext.prototype.drawArrays = function (...args) {
+      const start = performance.now();
+      while (performance.now() - start < 40);
+      drawArrays.apply(this, args);
+    };
   });
-  console.log('measured', await page.getByText(/quadros por segundo/).textContent());
+  await openGrid(page, './?medir');
+  const fps = await measured(page);
+  console.log('measured, 40 ms slower', fps);
+  expect(fps).toBeLessThan(30);
+});
+
+test('and does not count a measurement the page was hidden for', async ({ page }) => {
+  await openGrid(page, './?medir');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(
+    page.getByText(
+      'Não foi possível medir a prévia: deixe a página visível e abra a foto de novo.',
+    ),
+  ).toBeVisible({ timeout: 15_000 });
+});
+
+test('nor one during which the GPU took the context away', async ({ page }) => {
+  await openGrid(page, './?medir');
+  await page.evaluate(() => {
+    document
+      .querySelector('canvas')!
+      .getContext('webgl2')!
+      .getExtension('WEBGL_lose_context')!
+      .loseContext();
+  });
+  await expect(
+    page.getByText(
+      'Não foi possível medir a prévia: deixe a página visível e abra a foto de novo.',
+    ),
+  ).toBeVisible({ timeout: 15_000 });
 });

@@ -14,25 +14,47 @@ export const FOCAL_35MM_TAG = 0xa405;
 export const EXIF_READ_BYTES = 128 * 1024;
 
 /**
- * The 35 mm equivalent focal length recorded in a photo, in millimetres, or
- * null when the photo records none: photos that come through messaging apps
- * usually have no EXIF (PLANO.md §3.1), and an unknown focal length is
- * recorded as 0.
- *
- * exifr's mini build (MIT, about 29 KB, JPEG and TIFF) reads it. It has no
- * tag names, so the tag is asked for, and found, by its number. It is loaded
- * here, on the first photo, so the first paint does not wait for it.
+ * What a photo says about its focal length. "none" and "unreadable" are told
+ * apart on purpose: a photo that records nothing is a fact about the photo,
+ * and a reader that could not read it is not.
  */
-export async function focal35mmFromExif(file: Blob): Promise<number | null> {
+export type FocalReading =
+  /** The 35 mm equivalent focal length the photo records, in millimetres. */
+  | { readonly kind: 'recorded'; readonly mm: number }
+  /** Its EXIF was read and records none, or 0, which EXIF uses for unknown. */
+  | { readonly kind: 'none' }
+  /**
+   * Not read: a format the reader does not know (PNG, HEIC), EXIF it cannot
+   * parse, or the reader itself failed to load.
+   */
+  | { readonly kind: 'unreadable' };
+
+/** The focal length a reading gives, or null. */
+export function recordedFocal(reading: FocalReading): number | null {
+  return reading.kind === 'recorded' ? reading.mm : null;
+}
+
+/**
+ * Reads the 35 mm equivalent focal length a photo records. Photos that come
+ * through messaging apps usually have no EXIF (PLANO.md §3.1).
+ *
+ * exifr's mini build reads it (MIT; JPEG and TIFF; 27.6 KB once built). It
+ * has no tag names, so the tag is asked for, and found, by its number. It is
+ * loaded here, on the first photo, so the first paint does not wait for it.
+ */
+export async function focal35mmFromExif(file: Blob): Promise<FocalReading> {
   try {
     const head = await file.slice(0, EXIF_READ_BYTES).arrayBuffer();
     const { default: exifr } = await import('exifr/dist/mini.esm.mjs');
     const tags = (await exifr.parse(head, { exif: { pick: [FOCAL_35MM_TAG] } })) as
-      Record<number, unknown> | undefined;
+      (Record<number, unknown> & { errors?: unknown[] }) | undefined;
     const value = tags?.[FOCAL_35MM_TAG];
-    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return { kind: 'recorded', mm: value };
+    }
+    // exifr gives a broken EXIF back as errors, without the tag.
+    return tags?.errors?.length ? { kind: 'unreadable' } : { kind: 'none' };
   } catch {
-    // No EXIF, or EXIF exifr cannot read: the same as none, for the focal.
-    return null;
+    return { kind: 'unreadable' };
   }
 }

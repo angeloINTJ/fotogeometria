@@ -9,7 +9,8 @@
 import { DEFAULT_PARAMS } from '../core/correction';
 import type { CorrectionParams } from '../core/correction';
 import { WebGLUnavailableError, Renderer } from '../gl/renderer';
-import { focal35mmFromExif } from '../io/exif';
+import type { FocalReading } from '../io/exif';
+import { focal35mmFromExif, recordedFocal } from '../io/exif';
 import type { LoadedImage } from '../io/load-image';
 import { loadImage } from '../io/load-image';
 import type { Tool } from './controls';
@@ -31,8 +32,10 @@ export interface AppState {
   readonly status: 'idle' | 'opening' | 'ready' | 'error';
   readonly error: AppError | null;
   readonly photo: LoadedImage | null;
-  /** The focal length the photo's EXIF records, in millimetres. */
-  readonly exifFocal: number | null;
+  /** Which input is opening a photo, so its button can say so. */
+  readonly openingFrom: 'gallery' | 'camera' | null;
+  /** What the photo's EXIF says about its focal length. */
+  readonly focal: FocalReading;
   readonly params: CorrectionParams;
   /** The parameters before each change, for undo. */
   readonly history: History;
@@ -40,8 +43,12 @@ export interface AppState {
   readonly grid: boolean;
   /** The original is shown while the preview is held. */
   readonly comparing: boolean;
-  /** ?medir: the preview's frames per second with the controls moving. */
-  readonly measured: number | 'measuring' | null;
+  /**
+   * ?medir: the preview's frames per second with the controls moving, or
+   * 'failed' when the measurement did not count (the page was hidden, or
+   * the preview drew nothing).
+   */
+  readonly measured: number | 'measuring' | 'failed' | null;
 }
 
 /** An element of the page, created with a class and, optionally, a text. */
@@ -119,7 +126,8 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
     status: 'idle',
     error: null,
     photo: null,
-    exifFocal: null,
+    openingFrom: null,
+    focal: { kind: 'none' },
     params: DEFAULT_PARAMS,
     history: [],
     tool: 'level',
@@ -156,7 +164,7 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
       keep();
     },
     restore() {
-      change(defaultParams(state.exifFocal));
+      change(defaultParams(recordedFocal(state.focal)));
       keep();
     },
     toggleGrid() {
@@ -164,6 +172,7 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
       keep();
     },
     compare(on) {
+      if (state.measured === 'measuring' && on) return;
       if (state.photo && state.comparing !== on) update({ comparing: on });
     },
     changePhoto() {
@@ -216,6 +225,7 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
   /** The line under the preview. */
   function statusLine(): string {
     if (state.measured === 'measuring') return t.measuring;
+    if (state.measured === 'failed') return t.measureFailed;
     if (typeof state.measured === 'number') return t.measured(Math.round(state.measured));
     const photo = state.photo;
     if (!photo) return '';
@@ -233,7 +243,9 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
     const opening = state.status === 'opening';
     choose.disabled = opening || renderer === null;
     take.disabled = opening || renderer === null;
-    choose.textContent = opening ? t.opening : t.choosePhoto;
+    // The button that was used says the photo is opening.
+    choose.textContent = opening && state.openingFrom === 'gallery' ? t.opening : t.choosePhoto;
+    take.textContent = opening && state.openingFrom === 'camera' ? t.opening : t.takePhoto;
     startError.hidden = state.error === null;
     startError.textContent = state.error ? errorText[state.error] : '';
 
@@ -243,9 +255,10 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
       grid: state.grid,
       comparing: state.comparing,
       canUndo: state.history.length > 0,
+      opening,
       busy: opening || state.measured === 'measuring',
       status: statusLine(),
-      exifFocal: state.exifFocal,
+      focal: state.focal,
     });
     if (state.photo && state.screen === 'editor') {
       preview?.show({
@@ -277,33 +290,60 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
     render(previous);
   }
 
-  /** ?medir: moves the controls for a few seconds and reports the frames per second. */
+  /**
+   * ?medir: for MEASURE_SECONDS, every frame changes two controls through
+   * the path a slider's change takes (the state, the screen, the preview),
+   * and the frames the preview drew are counted. The browser holds frames
+   * back when a frame's work, on the page or on the GPU, does not fit in
+   * one, so a phone that cannot keep up shows fewer. A page hidden meanwhile
+   * stops its frames, and a lost context stops the drawing: then the
+   * measurement does not count.
+   */
   async function measure(): Promise<void> {
-    if (!preview) return;
-    update({ measured: 'measuring' });
+    const view = preview;
+    if (!view) return;
     const base = state.params;
-    try {
-      const fps = await preview.measure((n) => measuredParams(base, n), MEASURE_SECONDS);
-      update({ measured: fps });
-    } catch (error) {
-      console.error(error);
-      update({ measured: null });
-    }
+    update({ measured: 'measuring', comparing: false });
+    const drawnBefore = view.drawn;
+    let hidden = document.hidden;
+    const onVisibility = () => {
+      if (document.hidden) hidden = true;
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    const fps = await new Promise<number | null>((resolve) => {
+      let n = 0;
+      let start = 0;
+      let lost = false;
+      const step = (now: number) => {
+        if (n === 0) start = now;
+        lost ||= renderer?.isLost ?? true;
+        if (hidden || lost || now - start >= MEASURE_SECONDS * 1000) {
+          const drawn = view.drawn - drawnBefore;
+          resolve(hidden || lost || drawn === 0 ? null : (drawn * 1000) / (now - start));
+          return;
+        }
+        update({ params: measuredParams(base, n++) });
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    document.removeEventListener('visibilitychange', onVisibility);
+    update({ params: base, measured: fps ?? 'failed' });
   }
 
-  async function open(file: File): Promise<void> {
+  async function open(file: File, from: 'gallery' | 'camera'): Promise<void> {
     if (!renderer || !preview) return;
-    update({ status: 'opening', error: null, comparing: false });
-    const exif = focal35mmFromExif(file);
+    update({ status: 'opening', openingFrom: from, error: null, comparing: false });
+    const reading = focal35mmFromExif(file);
     let photo: LoadedImage;
     try {
       photo = await loadImage(file, renderer.maxTextureSize);
     } catch (error) {
       console.error(error);
-      update({ screen: 'start', status: 'error', error: 'decode' });
+      update({ screen: 'start', status: 'error', openingFrom: null, error: 'decode' });
       return;
     }
-    const exifFocal = await exif;
+    const focal = await reading;
     const previous = state.photo;
     // Ready once the photo is decoded and handed to the GPU (render() shows
     // it): the preview draws it in the next frame. Waiting for that frame
@@ -312,9 +352,10 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
     update({
       screen: 'editor',
       status: 'ready',
+      openingFrom: null,
       photo,
-      exifFocal,
-      params: initialParams(loadPreferences(storage), exifFocal),
+      focal,
+      params: initialParams(loadPreferences(storage), recordedFocal(focal)),
       history: [],
       measured: null,
     });
@@ -326,12 +367,15 @@ export function startApp(root: HTMLElement, t: Messages, locale: Locale): void {
 
   choose.addEventListener('click', () => gallery.click());
   take.addEventListener('click', () => camera.click());
-  for (const input of [gallery, camera]) {
+  for (const [input, from] of [
+    [gallery, 'gallery'],
+    [camera, 'camera'],
+  ] as const) {
     input.addEventListener('change', () => {
       const file = input.files?.[0];
       // The same file chosen twice must fire change again.
       input.value = '';
-      if (file) void open(file);
+      if (file) void open(file, from);
     });
   }
 

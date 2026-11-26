@@ -8,6 +8,7 @@
  */
 import { LENS_PRESETS } from '../core/camera';
 import type { CorrectionParams } from '../core/correction';
+import type { FocalReading } from '../io/exif';
 import type { SliderKey, Tool } from './controls';
 import { SLIDERS, TOOLS, presetOf } from './controls';
 import type { Locale, Messages } from './i18n';
@@ -20,12 +21,14 @@ export interface EditorViewState {
   readonly grid: boolean;
   readonly comparing: boolean;
   readonly canUndo: boolean;
-  /** A photo is opening: the actions wait. */
+  /** A photo is opening: the photo button says so. */
+  readonly opening: boolean;
+  /** A photo is opening, or ?medir is measuring: the controls wait. */
   readonly busy: boolean;
   /** The line under the preview. */
   readonly status: string;
-  /** The focal length the photo's EXIF records, in millimetres. */
-  readonly exifFocal: number | null;
+  /** What the photo's EXIF says about its focal length. */
+  readonly focal: FocalReading;
 }
 
 /** What the screen asks the app for. */
@@ -62,6 +65,19 @@ function element<K extends keyof HTMLElementTagNameMap>(
   node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/**
+ * Sets a text, or an attribute, only when it changes. A screen reader can
+ * announce a live region again when its text is merely rewritten, and the
+ * editor draws on every frame a slider moves.
+ */
+function setText(node: Node, text: string): void {
+  if (node.textContent !== text) node.textContent = text;
+}
+
+function setAttribute(node: Element, name: string, value: string): void {
+  if (node.getAttribute(name) !== value) node.setAttribute(name, value);
 }
 
 /** A button of the given weight (docs/ANGULO.md §4.1). */
@@ -108,6 +124,8 @@ function gridOverlay(): SVGSVGElement {
  */
 export function createEditorView(t: Messages, locale: Locale, on: EditorViewEvents): EditorView {
   const root = element('section', 'editor');
+  // The screen's title, for screen readers: the preview needs the room.
+  const title = element('h1', 'so-leitor', 'FotoGeometria');
 
   // Above the preview: the photo, the grid, the comparison.
   const photoButton = button('secundario', t.changePhoto);
@@ -130,14 +148,22 @@ export function createEditorView(t: Messages, locale: Locale, on: EditorViewEven
   const grid = gridOverlay();
   stage.append(canvas, grid);
 
+  // The hold follows the pointer that began it: a second finger lifted
+  // elsewhere does not end it.
   const hold = (target: HTMLElement) => {
+    let holding: number | null = null;
     target.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || holding !== null) return;
+      holding = event.pointerId;
       target.setPointerCapture(event.pointerId);
       on.compare(true);
     });
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) {
-      target.addEventListener(type, () => on.compare(false));
+      target.addEventListener(type, (event) => {
+        if (event.pointerId !== holding) return;
+        holding = null;
+        on.compare(false);
+      });
     }
     // A long press would otherwise open the browser's menu for the image.
     target.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -164,14 +190,16 @@ export function createEditorView(t: Messages, locale: Locale, on: EditorViewEven
   toolPanel.id = 'painel-ferramenta';
   toolPanel.setAttribute('role', 'tabpanel');
 
-  const sliders = new Map<SliderKey, { input: HTMLInputElement; output: HTMLOutputElement }>();
+  const sliders = new Map<SliderKey, { input: HTMLInputElement; value: HTMLElement }>();
   const slider = (key: SliderKey): HTMLElement => {
     const box = element('div', 'controle');
     const id = `controle-${key}`;
     const label = element('label', 'rotulo', t.sliders[key]);
     label.htmlFor = id;
-    const output = element('output', 'dado');
-    output.htmlFor.add(id);
+    // The value as the eye reads it; a screen reader hears the slider's own
+    // aria-valuetext, so this one is hidden from it, not announced twice.
+    const value = element('span', 'dado');
+    value.setAttribute('aria-hidden', 'true');
     const input = element('input', 'controle-faixa');
     input.type = 'range';
     input.id = id;
@@ -182,9 +210,9 @@ export function createEditorView(t: Messages, locale: Locale, on: EditorViewEven
     input.addEventListener('input', () => on.slide(key, input.valueAsNumber, false));
     input.addEventListener('change', () => on.slide(key, input.valueAsNumber, true));
     const head = element('div', 'controle-topo');
-    head.append(label, output);
+    head.append(label, value);
     box.append(head, input);
-    sliders.set(key, { input, output });
+    sliders.set(key, { input, value });
     return box;
   };
 
@@ -252,9 +280,20 @@ export function createEditorView(t: Messages, locale: Locale, on: EditorViewEven
   actions.append(undoButton, restoreButton);
 
   panel.append(status, toolPanel, tabs, actions);
-  root.append(top, stage, panel);
+  root.append(title, top, stage, panel);
 
   let shownTool: Tool = 'level';
+
+  /** What the lens tool says about the photo's own focal length. */
+  const focalText = (focal: FocalReading): string => {
+    if (focal.kind === 'none') return t.focalNone;
+    if (focal.kind === 'unreadable') return t.focalUnreadable;
+    const { min, max } = SLIDERS.focal35mm;
+    const mm = formatMillimetres(locale, focal.mm);
+    return focal.mm < min || focal.mm > max
+      ? t.focalOutOfRange(mm, formatMillimetres(locale, min), formatMillimetres(locale, max))
+      : t.focalFromPhoto(mm);
+  };
 
   return {
     element: root,
@@ -266,49 +305,39 @@ export function createEditorView(t: Messages, locale: Locale, on: EditorViewEven
       for (const { tool } of TOOLS) {
         const selected = tool === state.tool;
         const tab = tabButtons.get(tool)!;
-        tab.setAttribute('aria-selected', String(selected));
+        setAttribute(tab, 'aria-selected', String(selected));
         tab.tabIndex = selected ? 0 : -1;
         groups.get(tool)!.hidden = !selected;
       }
-      toolPanel.setAttribute('aria-labelledby', `aba-${state.tool}`);
+      setAttribute(toolPanel, 'aria-labelledby', `aba-${state.tool}`);
 
-      for (const [key, { input, output }] of sliders) {
-        const value = state.params[key];
-        const text = formatSlider(locale, key, value);
-        if (input.valueAsNumber !== value) input.value = String(value);
-        input.setAttribute('aria-valuetext', text);
-        output.textContent = text;
+      for (const [key, { input, value }] of sliders) {
+        const current = state.params[key];
+        const text = formatSlider(locale, key, current);
+        if (input.valueAsNumber !== current) input.value = String(current);
+        setAttribute(input, 'aria-valuetext', text);
+        setText(value, text);
         input.disabled = state.busy;
       }
       const preset = presetOf(state.params.focal35mm);
       for (const [name, presetButton] of presetButtons) {
-        presetButton.setAttribute('aria-pressed', String(name === preset));
+        setAttribute(presetButton, 'aria-pressed', String(name === preset));
         presetButton.disabled = state.busy;
       }
-      const { min, max } = SLIDERS.focal35mm;
-      focalNote.textContent =
-        state.exifFocal === null
-          ? t.focalUnknown
-          : state.exifFocal < min || state.exifFocal > max
-            ? t.focalOutOfRange(
-                formatMillimetres(locale, state.exifFocal),
-                formatMillimetres(locale, min),
-                formatMillimetres(locale, max),
-              )
-            : t.focalFromPhoto(formatMillimetres(locale, state.exifFocal));
+      setText(focalNote, focalText(state.focal));
 
       grid.style.display = state.grid ? '' : 'none';
-      gridButton.setAttribute('aria-pressed', String(state.grid));
-      originalButton.setAttribute('aria-pressed', String(state.comparing));
-      canvas.setAttribute('aria-label', state.comparing ? t.originalLabel : t.previewLabel);
+      setAttribute(gridButton, 'aria-pressed', String(state.grid));
+      setAttribute(originalButton, 'aria-pressed', String(state.comparing));
+      setAttribute(canvas, 'aria-label', state.comparing ? t.originalLabel : t.previewLabel);
 
       undoButton.disabled = state.busy || !state.canUndo;
       restoreButton.disabled = state.busy;
       gridButton.disabled = state.busy;
       originalButton.disabled = state.busy;
       photoButton.disabled = state.busy;
-      photoButton.textContent = state.busy ? t.opening : t.changePhoto;
-      status.textContent = state.status;
+      setText(photoButton, state.opening ? t.opening : t.changePhoto);
+      setText(status, state.status);
     },
   };
 }

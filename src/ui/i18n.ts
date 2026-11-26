@@ -41,9 +41,11 @@ export interface Messages {
   readonly lensPresets: string;
   readonly focalFromPhoto: (mm: string) => string;
   readonly focalOutOfRange: (mm: string, min: string, max: string) => string;
-  readonly focalUnknown: string;
+  readonly focalNone: string;
+  readonly focalUnreadable: string;
   readonly measuring: string;
   readonly measured: (fps: number) => string;
+  readonly measureFailed: string;
   readonly errorDecode: string;
   readonly errorWebGL: string;
   readonly errorDraw: string;
@@ -89,7 +91,10 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     focalFromPhoto: (mm) => `A foto informa ${mm}.`,
     focalOutOfRange: (mm, min, max) =>
       `A foto informa ${mm}, fora da faixa do controle, de ${min} a ${max}.`,
-    focalUnknown: 'A foto não informa a focal: escolha a lente com que ela foi feita.',
+    focalNone: 'A foto não informa a focal: escolha a lente com que ela foi feita.',
+    focalUnreadable:
+      'Não foi possível ler a focal desta foto: escolha a lente com que ela foi feita.',
+    measureFailed: 'Não foi possível medir a prévia: deixe a página visível e abra a foto de novo.',
     measuring: 'Medindo a prévia…',
     measured: (fps) => `Prévia a ${fps} quadros por segundo com os controles em movimento.`,
     errorDecode:
@@ -131,7 +136,11 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     focalFromPhoto: (mm) => `The photo records ${mm}.`,
     focalOutOfRange: (mm, min, max) =>
       `The photo records ${mm}, outside the control's range, ${min} to ${max}.`,
-    focalUnknown: 'The photo does not record its focal length: choose the lens it was taken with.',
+    focalNone: 'The photo does not record its focal length: choose the lens it was taken with.',
+    focalUnreadable:
+      'The focal length of this photo could not be read: choose the lens it was taken with.',
+    measureFailed:
+      'The preview could not be measured: keep the page visible and open the photo again.',
     measuring: 'Measuring the preview…',
     measured: (fps) => `Preview at ${fps} frames per second with the controls moving.`,
     errorDecode: 'This file could not be opened as an image. Choose a photo in JPEG, PNG or WebP.',
@@ -173,7 +182,10 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     focalFromPhoto: (mm) => `La foto indica ${mm}.`,
     focalOutOfRange: (mm, min, max) =>
       `La foto indica ${mm}, fuera del rango del control, de ${min} a ${max}.`,
-    focalUnknown: 'La foto no indica su focal: elige la lente con la que se tomó.',
+    focalNone: 'La foto no indica su focal: elige la lente con la que se tomó.',
+    focalUnreadable: 'No se pudo leer la focal de esta foto: elige la lente con la que se tomó.',
+    measureFailed:
+      'No se pudo medir la vista previa: mantén la página visible y abre la foto de nuevo.',
     measuring: 'Midiendo la vista previa…',
     measured: (fps) =>
       `Vista previa a ${fps} fotogramas por segundo con los controles en movimiento.`,
@@ -200,6 +212,30 @@ export function pickLocale(preferred: readonly string[]): Locale {
 }
 
 /**
+ * The number formats of a language, made once: making an Intl.NumberFormat
+ * costs more than using one, and the editor writes values on every frame a
+ * slider moves.
+ */
+const formats = new Map<Locale, Record<'degrees' | 'percent' | 'decimal', Intl.NumberFormat>>();
+
+function formatsOf(locale: Locale): Record<'degrees' | 'percent' | 'decimal', Intl.NumberFormat> {
+  let made = formats.get(locale);
+  if (!made) {
+    made = {
+      degrees: new Intl.NumberFormat(locale, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+        signDisplay: 'exceptZero',
+      }),
+      percent: new Intl.NumberFormat(locale, { style: 'percent' }),
+      decimal: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
+    };
+    formats.set(locale, made);
+  }
+  return made;
+}
+
+/**
  * How a slider's value reads, in the interface's language: degrees with one
  * decimal and their sign, the edges in percent, the focal length in
  * millimetres ("+2,5°", "70%", "24 mm" in Brazilian Portuguese).
@@ -208,14 +244,10 @@ export function formatSlider(locale: Locale, key: SliderKey, value: number): str
   switch (key) {
     case 'pitchOffsetDeg':
     case 'rollOffsetDeg':
-      return `${new Intl.NumberFormat(locale, {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-        signDisplay: 'exceptZero',
-      }).format(value)}°`;
+      return `${formatsOf(locale).degrees.format(value)}°`;
     case 'paniniD':
     case 'verticalCompression':
-      return new Intl.NumberFormat(locale, { style: 'percent' }).format(value);
+      return formatsOf(locale).percent.format(value);
     case 'focal35mm':
       return formatMillimetres(locale, value);
   }
@@ -223,5 +255,5 @@ export function formatSlider(locale: Locale, key: SliderKey, value: number): str
 
 /** A length in millimetres, as the interface writes it ("12,5 mm"). */
 export function formatMillimetres(locale: Locale, mm: number): string {
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(mm)} mm`;
+  return `${formatsOf(locale).decimal.format(mm)} mm`;
 }

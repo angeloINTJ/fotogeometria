@@ -4,8 +4,8 @@
  * Exif IFD, FocalLengthIn35mmFormat in it, and an end of image. exifr reads
  * the segments, not the picture, so no picture is needed.
  */
-import { describe, expect, it } from 'vitest';
-import { FOCAL_35MM_TAG, focal35mmFromExif } from '../../src/io/exif';
+import { describe, expect, it, vi } from 'vitest';
+import { FOCAL_35MM_TAG, focal35mmFromExif, recordedFocal } from '../../src/io/exif';
 
 /**
  * FocalLengthIn35mmFormat, from the EXIF standard (2.32, table 8), written
@@ -57,22 +57,48 @@ describe('focal35mmFromExif', () => {
   });
 
   it('reads the 35 mm equivalent focal length', async () => {
-    expect(await focal35mmFromExif(jpegWithFocal(24))).toBe(24);
-    expect(await focal35mmFromExif(jpegWithFocal(13))).toBe(13);
+    expect(await focal35mmFromExif(jpegWithFocal(24))).toEqual({ kind: 'recorded', mm: 24 });
+    expect(await focal35mmFromExif(jpegWithFocal(13))).toEqual({ kind: 'recorded', mm: 13 });
   });
 
   it('reads it in either byte order', async () => {
-    expect(await focal35mmFromExif(jpegWithFocal(26, false))).toBe(26);
+    expect(await focal35mmFromExif(jpegWithFocal(26, false))).toEqual({ kind: 'recorded', mm: 26 });
   });
 
-  it('takes a focal length of 0, unknown in EXIF, as none', async () => {
-    expect(await focal35mmFromExif(jpegWithFocal(0))).toBeNull();
+  it('says a photo records none when its EXIF has 0, unknown, or there is no EXIF', async () => {
+    expect(await focal35mmFromExif(jpegWithFocal(0))).toEqual({ kind: 'none' });
+    const bare = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])]);
+    expect(await focal35mmFromExif(bare)).toEqual({ kind: 'none' });
   });
 
-  it('gives none for a JPEG without EXIF, or a file that is not a JPEG', async () => {
-    expect(
-      await focal35mmFromExif(new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])])),
-    ).toBeNull();
-    expect(await focal35mmFromExif(new Blob(['not an image']))).toBeNull();
+  it('says it could not read a file it does not know, or a broken EXIF', async () => {
+    expect(await focal35mmFromExif(new Blob(['not an image']))).toEqual({ kind: 'unreadable' });
+    // An APP1 that announces 64 bytes and stops after the TIFF header.
+    const broken = new Uint8Array([
+      0xff, 0xd8, 0xff, 0xe1, 0, 0x40, 0x45, 0x78, 0x69, 0x66, 0, 0, 0x4d, 0x4d, 0, 0x2a,
+    ]);
+    expect(await focal35mmFromExif(new Blob([broken]))).toEqual({ kind: 'unreadable' });
+  });
+
+  it('says it could not read when the reader itself does not load (offline)', async () => {
+    vi.resetModules();
+    vi.doMock('exifr/dist/mini.esm.mjs', () => {
+      throw new Error('Failed to fetch dynamically imported module');
+    });
+    try {
+      const fresh = await import('../../src/io/exif');
+      expect(await fresh.focal35mmFromExif(jpegWithFocal(24))).toEqual({ kind: 'unreadable' });
+    } finally {
+      vi.doUnmock('exifr/dist/mini.esm.mjs');
+      vi.resetModules();
+    }
+  });
+});
+
+describe('recordedFocal', () => {
+  it('gives the focal length only when the photo records one', () => {
+    expect(recordedFocal({ kind: 'recorded', mm: 24 })).toBe(24);
+    expect(recordedFocal({ kind: 'none' })).toBeNull();
+    expect(recordedFocal({ kind: 'unreadable' })).toBeNull();
   });
 });

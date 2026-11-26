@@ -24,9 +24,7 @@ export class Preview {
   private content: PreviewContent | null = null;
   private correction: Correction | null = null;
   private frame = 0;
-  // While measure() runs, what show() was last given: it comes back after.
-  private measuring = false;
-  private latest: PreviewContent | null = null;
+  private frames = 0;
 
   /**
    * @param onError called with what a frame threw; the preview stops drawing
@@ -46,8 +44,6 @@ export class Preview {
    * photo or the parameters changed.
    */
   show(content: PreviewContent | null): void {
-    this.latest = content;
-    if (this.measuring) return;
     if (content && content.photo !== this.content?.photo) {
       this.renderer.setSource(content.photo.bitmap);
     }
@@ -63,49 +59,12 @@ export class Preview {
   }
 
   /**
-   * How fast the preview follows moving controls (PLANO.md §8, stage 3: at
-   * least 30 frames per second on a mid-range phone). For `seconds`, every
-   * frame draws new parameters, as a hand on the sliders would, and the
-   * frames the browser managed are counted: a GPU that cannot keep up makes
-   * the browser skip frames. Then the preview shows what show() was last
-   * given.
-   *
-   * @param paramsAt the parameters of each frame, from 0
-   * @returns frames drawn per second
+   * How many frames the preview has drawn: ?medir counts them over a few
+   * seconds (src/ui/app.ts). A frame skipped, for a lost context or an empty
+   * box, is not one.
    */
-  measure(paramsAt: (frame: number) => CorrectionParams, seconds: number): Promise<number> {
-    const shown = this.content;
-    if (!shown || this.measuring) return Promise.resolve(0);
-    this.measuring = true;
-    const done = () => {
-      this.measuring = false;
-      this.content = null;
-      this.correction = null;
-      this.show(this.latest);
-    };
-    return new Promise((resolve, reject) => {
-      let frames = 0;
-      let start = 0;
-      const step = (now: number) => {
-        try {
-          if (frames === 0) start = now;
-          this.content = { ...shown, mode: 'corrected', params: paramsAt(frames) };
-          this.correction = null;
-          this.draw();
-          frames++;
-          if (now - start < seconds * 1000) {
-            requestAnimationFrame(step);
-            return;
-          }
-          done();
-          resolve(((frames - 1) * 1000) / (now - start));
-        } catch (error) {
-          done();
-          reject(error instanceof Error ? error : new Error(String(error)));
-        }
-      };
-      requestAnimationFrame(step);
-    });
+  get drawn(): number {
+    return this.frames;
   }
 
   private schedule(): void {
@@ -156,5 +115,6 @@ export class Preview {
         mode: mode === 'original' ? 'original' : 'color',
       }),
     );
+    this.frames++;
   }
 }
