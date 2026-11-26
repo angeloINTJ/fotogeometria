@@ -23,8 +23,8 @@ Cada paso es un control deslizante, del automático al apagado.
 
 | | |
 |---|---|
-| **Etapa** | 2 de 8 del [plan](docs/PLANO.md): la corrección se ejecuta en la GPU, y la página abre una foto y la muestra corregida con los parámetros fijos del caso de referencia. Los controles llegan en la etapa 3. |
-| **Pruebas** | 216 pruebas (`npm test`), ejecutadas en cada pull request: las matemáticas frente a la salida de la propia referencia, con la que coinciden a 10⁻⁶ px donde el plan pide 10⁻² px, y las puertas del repositorio. La CI también vuelve a generar la salida de la referencia y la compara con la versionada, y ejecuta las pruebas en el navegador (`npm run e2e`): el shader frente a la referencia en cada píxel, y la app abriendo una foto. |
+| **Etapa** | 3 de 8 del [plan](docs/PLANO.md): el editor. Deslizadores nivelan la foto a mano (inclinación y rotación; trazar líneas llega en la etapa 4, la detección en la etapa 6) y ajustan los bordes, la lente viene del EXIF de la foto o de un preajuste, y hay deshacer, cuadrícula y el original para comparar. El criterio de la etapa, 30 fotogramas por segundo en un móvil de gama media, se mide abriendo la app con `?medir`; todavía no se ha medido en un móvil. |
+| **Pruebas** | 239 pruebas (`npm test`), ejecutadas en cada pull request: las matemáticas frente a la salida de la propia referencia, con la que coinciden a 10⁻⁶ px donde el plan pide 10⁻² px, y las puertas del repositorio. La CI también vuelve a generar la salida de la referencia y la compara con la versionada, y ejecuta las pruebas en el navegador (`npm run e2e`): el shader frente a la referencia en cada píxel, y la app abriendo una foto. |
 
 ## Privacidad
 

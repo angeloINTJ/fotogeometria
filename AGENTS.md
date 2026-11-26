@@ -37,6 +37,8 @@ npm run gates          # secrets, Ângulo, notices
 
 Node 22.13 or later. `FG_BASE=/ npm run build` builds for a site served at the root instead of `/fotogeometria/`.
 
+In the app, `?medir` at the end of the address measures the preview: after a photo opens, the editor moves two controls every frame for 3 seconds and reports the frames per second. Stage 3 of the plan is done at 30 on a mid-range phone.
+
 ## 3. The gates
 
 CI runs every one of these on each pull request and each push to `main`, and a pull request cannot merge with one red. Run them before you push: CI answers in minutes what your terminal answers in seconds.

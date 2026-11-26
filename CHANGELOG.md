@@ -6,6 +6,18 @@ All notable changes to FotoGeometria. Each stage of [the plan](docs/PLANO.md) la
 
 ## Unreleased
 
+### Stage 3: the editor and its controls
+
+- **The editor.** `src/ui/editor-view.ts`: the preview takes the screen, with a grid that comes and goes. Above it: change the photo, the grid, and the original to compare, which holding the preview also shows (PLANO.md §4). Below it, one tool at a time: Level (tilt and rotation, by hand until lines are traced in stage 4 and detected in stage 6), Edges (Panini and vertical compression) and Lens (the presets 0.5x, 1x and 2x, that is 13, 24 and 48 mm, and the focal length from 10 to 60 mm); then Undo and Restore defaults. The tabs, the sliders and the comparison work from the keyboard, and every value reads in the interface's language ("+2,5°", "70%", "24 mm").
+- **The start** opens a photo from the gallery or from the camera.
+- **The focal length from EXIF.** `src/io/exif.ts` reads FocalLengthIn35mmFormat with exifr's mini build, loaded on the first photo: a photo opens at its own focal length, held to the control's range, and the lens tool says what the photo records, or that it records none.
+- **Undo and what is kept.** A slider dragged is one change for undo, and up to 100 are kept. The edges and the grid are kept between visits in localStorage; a storage that refuses, or holds what the controls cannot take, leaves the defaults.
+- **The stage 2 fixed correction is gone**, as the maintainer confirmed: a photo opens unlevelled.
+- **Measuring the preview.** With `?medir` in the address, the editor moves Panini and the tilt every frame for 3 seconds and reports the frames per second: 60 on SwiftShader, and 24 when each frame is made 40 ms slower, so the count follows what a frame costs. Stage 3 is done at 30 on a mid-range phone, which has not been measured yet.
+- **Browser tests** (`e2e/editor.spec.ts`): each of the five sliders, and the presets, changes the preview; undo brings back each earlier picture byte for byte, and restore the first; holding the preview, or the button from the keyboard, shows the original; the grid, kept for the next visit; the edges kept for the next photo, and the levelling not; the EXIF focal length, or the note that there is none; the camera's input; and `?medir`.
+- **Build.** JavaScript from 23,973 to 65,313 B: the editor, 13,705 B more in the page's bundle, and exifr's chunk, 27,635 B, loaded with the first photo. CSS from 3,479 to 5,288 B.
+- **Tests.** 239 unit cases and 37 browser cases.
+
 ### Stage 2: the reprojection on the GPU, and a page that shows it
 
 - **The shader.** `src/gl/reproject.frag` and `src/gl/renderer.ts`: WebGL2, one triangle over the target, the photo as a texture with mipmaps and trilinear filtering (anisotropic up to 8x where the GPU has it), high precision throughout. It draws to the canvas for the preview, and to a framebuffer read back for the tests and, from stage 5, the export; both are drawn the same way up, so the canvas shows byte for byte what the read-back reads. A lost WebGL context is rebuilt and drawn again (PLANO.md §6).

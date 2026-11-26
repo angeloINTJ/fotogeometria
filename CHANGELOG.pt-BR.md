@@ -6,6 +6,18 @@ Todas as mudanças relevantes do FotoGeometria. Cada etapa do [plano](docs/PLANO
 
 ## Unreleased
 
+### Etapa 3: o editor e seus controles
+
+- **O editor.** `src/ui/editor-view.ts`: a prévia ocupa a tela, com uma grade que vem e vai. Acima dela: trocar a foto, a grade e o original para comparar, que segurar a prévia também mostra (§4 do plano). Abaixo, uma ferramenta por vez: Nivelar (inclinação e rotação, à mão até que se tracem linhas na etapa 4 e se detectem na etapa 6), Bordas (Panini e compressão vertical) e Lente (as predefinições 0,5x, 1x e 2x, isto é, 13, 24 e 48 mm, e a focal de 10 a 60 mm); depois, Desfazer e Restaurar padrões. As abas, os deslizadores e a comparação funcionam pelo teclado, e todo valor se lê no idioma da interface ("+2,5°", "70%", "24 mm").
+- **O início** abre uma foto da galeria ou da câmera.
+- **A focal pelo EXIF.** O `src/io/exif.ts` lê o FocalLengthIn35mmFormat com o build mini do exifr, carregado na primeira foto: a foto abre na própria focal, presa à faixa do controle, e a ferramenta Lente diz o que a foto informa, ou que não informa nada.
+- **Desfazer e o que fica guardado.** Arrastar um deslizador é uma mudança para o desfazer, e até 100 ficam guardadas. As bordas e a grade ficam guardadas entre visitas no localStorage; um armazenamento que recusa, ou que guarda o que os controles não aceitam, deixa os padrões.
+- **A correção fixa da etapa 2 saiu**, como o mantenedor confirmou: a foto abre sem nivelamento.
+- **Medir a prévia.** Com `?medir` no endereço, o editor move a Panini e a inclinação a cada quadro por 3 segundos e informa os quadros por segundo: 60 no SwiftShader, e 24 quando cada quadro fica 40 ms mais lento, então a contagem acompanha o custo de um quadro. A etapa 3 fica pronta com 30 num celular intermediário, o que ainda não foi medido.
+- **Testes no navegador** (`e2e/editor.spec.ts`): cada um dos cinco deslizadores, e as predefinições, mudam a prévia; o desfazer traz de volta cada imagem anterior byte a byte, e o restaurar, a primeira; segurar a prévia, ou o botão pelo teclado, mostra o original; a grade, guardada para a próxima visita; as bordas guardadas para a próxima foto, e o nivelamento não; a focal do EXIF, ou o aviso de que não há; a entrada da câmera; e o `?medir`.
+- **Build.** JavaScript de 23.973 para 65.313 B: o editor, 13.705 B a mais no bundle da página, e o pedaço do exifr, 27.635 B, carregado com a primeira foto. CSS de 3.479 para 5.288 B.
+- **Testes.** 239 casos unitários e 37 no navegador.
+
 ### Etapa 2: a reprojeção na GPU, e uma página que a mostra
 
 - **O shader.** `src/gl/reproject.frag` e `src/gl/renderer.ts`: WebGL2, um triângulo sobre o alvo, a foto como textura com mipmaps e filtro trilinear (anisotrópico até 8x onde a GPU tem), alta precisão em tudo. Desenha no canvas para a prévia e num framebuffer lido de volta para os testes e, a partir da etapa 5, para a exportação; os dois são desenhados no mesmo sentido, então o canvas mostra byte a byte o que a leitura lê. Um contexto WebGL perdido é refeito e desenhado de novo (§6 do plano).
