@@ -23,8 +23,8 @@ Every step is a slider, from automatic to off.
 
 | | |
 |---|---|
-| **Stage** | 0 of 8 of [the plan](docs/PLANO.md): the project's structure, its gates and CI. The editor arrives in stages 1 to 5. |
-| **Tests** | 42 unit tests (`npm test`) of the repository's own gates and of the reference's pin, run on every pull request. |
+| **Stage** | 2 of 8 of [the plan](docs/PLANO.md): the correction runs on the GPU, and the page opens a photo and shows it corrected with the reference case's fixed parameters. The controls arrive in stage 3. |
+| **Tests** | 216 tests (`npm test`), run on every pull request: the mathematics against the reference's own output, which it matches to 10⁻⁶ px where the plan asks for 10⁻² px, and the repository's gates. CI also regenerates the reference's output and compares it with the committed one, and runs the browser tests (`npm run e2e`): the shader against the reference on every pixel, and the app opening a photo. |
 
 ## Privacy
 
@@ -41,11 +41,11 @@ npm ci
 npm run dev        # http://localhost:5173/fotogeometria/
 ```
 
-`npm test` runs the unit tests, `npm run lint` and `npm run typecheck` the static checks, and `npm run gates` the repository's own gates. [CONTRIBUTING.md](CONTRIBUTING.md) has the rest.
+`npm test` runs the unit tests, `npm run e2e` the browser tests (once before: `npx playwright install chromium`), `npm run lint` and `npm run typecheck` the static checks, and `npm run gates` the repository's own gates. [CONTRIBUTING.md](CONTRIBUTING.md) has the rest.
 
 ## How it works
 
-The algorithm is a port of a validated Python script, kept in [reference/](reference/corrigir_geometria.py), and the TypeScript is held to it by parity tests at 0.01 px. [The plan](docs/PLANO.md) §3 has every formula: the camera model, the vanishing point, the levelling rotation, the Panini projection, the vertical compression, the reprojection that the GPU runs per pixel, and the automatic crop.
+The algorithm is a port of a validated Python script, kept in [reference/](reference/corrigir_geometria.py), and the TypeScript is held to it by parity tests at 0.01 px. [The plan](docs/PLANO.md) §3 has every formula: the camera model, the vanishing point, the levelling rotation, the Panini projection, the vertical compression, the reprojection that the GPU runs per pixel (from tables of the trigonometry, which the CPU computes per row and per column), and the automatic crop.
 
 ## Documentation
 

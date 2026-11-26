@@ -8,11 +8,11 @@
   "categories": {
     "html": {
       "match": "\\.html$",
-      "bytes": 907
+      "bytes": 1283
     },
     "css": {
       "match": "^assets/.*\\.css$",
-      "bytes": 2322
+      "bytes": 3479
     },
     "fonts": {
       "match": "^assets/.*\\.woff2$",
@@ -20,7 +20,7 @@
     },
     "js": {
       "match": "^assets/.*\\.js$",
-      "bytes": 184
+      "bytes": 23973
     },
     "classic-scripts": {
       "match": "^[^/]+\\.js$",
